@@ -12,7 +12,7 @@ export async function verifyToken(token: string) {
     return {
       userId: payload.sub,
       email: payload.email?.toString(),
-      name: payload.given_name ? `${payload.given_name} ${payload.family_name || ''}`.trim() : payload.email?.toString()
+      name: payload.name?.toString() || (payload.given_name ? `${payload.given_name} ${payload.family_name || ''}`.trim() : payload.email?.toString())
     };
   } catch (err) {
     console.error("Token verification failed!", err);

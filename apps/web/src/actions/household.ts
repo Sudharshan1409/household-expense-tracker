@@ -79,7 +79,7 @@ export async function createHousehold(idToken: string, name: string, budget: num
             GSI1PK: `USER#${user.userId}`,
             GSI1SK: `HOUSEHOLD#${householdId}`,
             userId: user.userId,
-            userName: user.email, // using email as placeholder
+            userName: user.name || user.email,
             householdId,
             role: "OWNER",
             budget,
@@ -192,7 +192,7 @@ export async function joinHousehold(idToken: string, householdId: string, budget
         GSI1PK: `USER#${user.userId}`,
         GSI1SK: `HOUSEHOLD#${householdId}`,
         userId: user.userId,
-        userName: user.email,
+        userName: user.name || user.email,
         householdId,
         role: "MEMBER",
         budget,
