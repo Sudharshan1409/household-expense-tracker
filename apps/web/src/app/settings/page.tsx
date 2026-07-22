@@ -109,7 +109,7 @@ export default function SettingsPage() {
 
         <Card className="p-6">
           <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2 mb-4">
-            <Settings className="h-5 w-5 text-muted-foreground" />
+            <SettingsIcon className="h-5 w-5 text-muted-foreground" />
             Custom Categories
           </h2>
           <CategoriesManager />
