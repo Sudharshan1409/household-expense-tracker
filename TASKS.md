@@ -34,7 +34,7 @@ Checkboxes are the implementation source of progress.
 - [x] Household membership model
 - [x] Invite member flow
 - [x] Accept/reject invitation
-- [ ] Owner/Admin/Member authorization
+- [x] Owner/Admin/Member authorization
 - [x] Household switcher if user belongs to multiple households
 
 ## Phase 3 — Core transactions (The engine)
@@ -44,7 +44,7 @@ Checkboxes are the implementation source of progress.
 - [x] Custom multi-member split (Percentage, Exact)
 - [x] Transaction edit/delete APIs
 - [x] Receipt attachment upload
-- [ ] Categories/subcategories
+- [x] Custom categories
 - [ ] Payment methods
 - [ ] Filters/search/pagination
 - [ ] Duplicate warning

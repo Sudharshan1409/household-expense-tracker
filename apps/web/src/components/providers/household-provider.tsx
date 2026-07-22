@@ -10,6 +10,7 @@ interface Household {
   name: string;
   role: string;
   monthlyBudget: number;
+  categories: string[];
 }
 
 interface HouseholdContextType {
@@ -50,6 +51,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
             role: m.role,
             name: meta?.name || "Unknown Household",
             monthlyBudget: m.budget || 50000,
+            categories: meta?.categories || ["Groceries", "Utilities", "Rent", "Dining Out", "Transportation", "Travel", "Entertainment", "Healthcare", "Shopping", "Maintenance", "Subscriptions", "Other"],
           };
         })
       );

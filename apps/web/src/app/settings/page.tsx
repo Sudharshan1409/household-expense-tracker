@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
+import { CategoriesManager } from "@/components/settings/categories-manager";
 import { Button } from "@/components/ui/button";
 import { User, Settings as SettingsIcon } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
@@ -104,7 +105,15 @@ export default function SettingsPage() {
               </span>
             )}
           </form>
-        </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2 mb-4">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+            Custom Categories
+          </h2>
+          <CategoriesManager />
+        </Card>
       </div>
     </div>
   );

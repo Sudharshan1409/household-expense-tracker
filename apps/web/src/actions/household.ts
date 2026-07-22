@@ -268,7 +268,39 @@ export async function updateHouseholdSettings(idToken: string, householdId: stri
       name: settings.name,
       monthlyBudget: settings.monthlyBudget,
       currency: "INR",
+      categories: metadata.categories, // retain categories
       createdAt: metadata.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+
+  await db.send(command);
+  return true;
+}
+
+/**
+ * Update household categories (Owner or Admin).
+ */
+export async function updateHouseholdCategories(idToken: string, householdId: string, categories: string[]) {
+  const user = await verifyToken(idToken);
+  await verifyOwner(user.userId, householdId);
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  const metadata = existing.Items?.[0] || {};
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      categories,
       updatedAt: new Date().toISOString(),
     },
   });

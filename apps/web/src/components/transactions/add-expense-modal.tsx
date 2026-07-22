@@ -7,6 +7,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { createTransaction } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { getUploadPresignedUrl } from "@/actions/s3";
+import { useHousehold } from "@/components/providers/household-provider";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface AddExpenseModalProps {
 }
 
 export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, currentUserId }: AddExpenseModalProps) {
+  const { activeHousehold } = useHousehold();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Other");
@@ -236,18 +238,11 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   onChange={(e) => setCategory(e.target.value)}
                   disabled={isLoading}
                 >
-                  <option value="Groceries">Groceries</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Rent">Rent</option>
-                  <option value="Dining Out">Dining Out</option>
-                  <option value="Transportation">Transportation</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Subscriptions">Subscriptions</option>
-                  <option value="Other">Other</option>
+                  {activeHousehold?.categories?.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  )) || (
+                    <option value="Other">Other</option>
+                  )}
                 </select>
               </div>
             </div>
