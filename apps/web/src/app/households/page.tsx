@@ -101,35 +101,35 @@ export default function SettingsPage() {
         {isLoading ? (
           <PageLoader title="Loading your households..." />
         ) : (
-          <div className="grid gap-4 p-6">
+          <div className="grid gap-4">
             {households.map((hh) => (
-              <div key={hh.householdId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-card border rounded-xl shadow-sm gap-4">
-                <div>
+              <div key={hh.householdId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-card border rounded-xl shadow-sm gap-4">
+                <div className="w-full sm:w-auto">
                   <h3 className="text-lg font-semibold">{hh.name}</h3>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
                     <Users className="w-4 h-4" />
                     <span>Role: {hh.role}</span>
                     <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">Active</span>
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap w-full sm:w-auto gap-2">
-                  <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => handleCopyInvite(hh.householdId)}>
+                <div className="grid grid-cols-2 sm:flex w-full sm:w-auto gap-2">
+                  <Button variant="secondary" className="w-full sm:w-auto" onClick={() => handleCopyInvite(hh.householdId)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Invite
                   </Button>
-                  <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setActiveHousehold(hh); setIsModalOpen(true); }} title="Manage Household">
-                    <SettingsIcon className="w-4 h-4 mr-2 md:mr-0" />
-                    <span className="md:hidden">Manage</span>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setActiveHousehold(hh); setIsModalOpen(true); }} title="Manage Household">
+                    <SettingsIcon className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Manage</span>
                   </Button>
-                  <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => handleLeave(hh.householdId)} title="Leave Household">
-                    <LogOut className="w-4 h-4 mr-2 md:mr-0" />
-                    <span className="md:hidden">Leave</span>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLeave(hh.householdId)} title="Leave Household">
+                    <LogOut className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Leave</span>
                   </Button>
                   {hh.role === "OWNER" && (
-                    <Button variant="outline" className="flex-1 sm:flex-none text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20" onClick={() => handleDelete(hh.householdId)} title="Delete Household">
-                      <Trash2 className="w-4 h-4 mr-2 md:mr-0" />
-                      <span className="md:hidden">Delete</span>
+                    <Button variant="outline" className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20" onClick={() => handleDelete(hh.householdId)} title="Delete Household">
+                      <Trash2 className="w-4 h-4 sm:mr-2" />
+                      <span className="ml-2 sm:ml-0">Delete</span>
                     </Button>
                   )}
                 </div>
