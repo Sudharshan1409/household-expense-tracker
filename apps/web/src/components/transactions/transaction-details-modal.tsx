@@ -18,6 +18,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && transaction) {
@@ -49,7 +50,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       const token = session.tokens?.idToken?.toString();
       if (token) {
         const presignedUrl = await getDownloadPresignedUrl(token, transaction.receiptUrl);
-        window.open(presignedUrl, '_blank', 'noopener,noreferrer');
+        setViewerUrl(presignedUrl);
       }
     } catch (err) {
       console.error("Failed to open receipt", err);
@@ -142,6 +143,29 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
           )}
         </div>
       </div>
+      
+      {viewerUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl h-[90vh] flex flex-col bg-card rounded-2xl border shadow-2xl relative overflow-hidden slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-4 border-b bg-muted/30">
+              <h3 className="font-semibold flex items-center gap-2"><Receipt className="h-5 w-5" /> Receipt Viewer</h3>
+              <button 
+                onClick={() => setViewerUrl(null)}
+                className="rounded-full p-2 hover:bg-muted transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 bg-muted/10 p-4">
+              <iframe 
+                src={viewerUrl} 
+                className="w-full h-full rounded-xl border bg-white" 
+                title="Receipt Viewer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
