@@ -287,20 +287,21 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                     Invite Members
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Share this code with your family or roommates to join this household.
+                    Share this link with your family or roommates to join this household.
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <code className="flex-1 bg-background border px-3 py-2 rounded-md font-mono text-center tracking-widest font-bold text-lg select-all">
-                      {household?.inviteCode}
+                    <code className="flex-1 bg-background border px-3 py-2 rounded-md font-mono text-xs sm:text-sm truncate select-all">
+                      {typeof window !== "undefined" ? `${window.location.origin}/invite/${household?.householdId}` : ""}
                     </code>
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        navigator.clipboard.writeText(household?.inviteCode || "");
-                        alert("Invite code copied to clipboard!");
+                        const inviteLink = `${window.location.origin}/invite/${household?.householdId}`;
+                        navigator.clipboard.writeText(inviteLink);
+                        alert("Invite link copied to clipboard!");
                       }}
                     >
-                      Copy
+                      Copy Link
                     </Button>
                   </div>
                 </div>
