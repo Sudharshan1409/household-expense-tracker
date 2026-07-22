@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, List, PieChart, Settings, Wallet, Repeat } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart } from "lucide-react";
 import { UserMenu } from "@/components/auth/user-menu";
 
 export function Sidebar() {
@@ -35,6 +35,15 @@ export function Sidebar() {
             >
               <PieChart className="h-4 w-4" />
               Reports
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/savings"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+            >
+              <LineChart className="h-4 w-4" />
+              Savings
             </Link>
           </li>
           <li>

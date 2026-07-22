@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, List, PieChart, Settings, Wallet } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, LineChart } from "lucide-react";
 
 export function BottomNav() {
   return (
@@ -25,6 +25,13 @@ export function BottomNav() {
       >
         <PieChart className="h-5 w-5" />
         <span className="text-[10px] font-medium">Reports</span>
+      </Link>
+      <Link
+        href="/savings"
+        className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary"
+      >
+        <LineChart className="h-5 w-5" />
+        <span className="text-[10px] font-medium">Savings</span>
       </Link>
       <Link
         href="/budgets"
