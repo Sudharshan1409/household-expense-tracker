@@ -8,7 +8,7 @@ import { Sidebar } from "@/components/navigation/sidebar";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], preload: false });
 
 export const metadata: Metadata = {
   title: "Household Finance Tracker",
