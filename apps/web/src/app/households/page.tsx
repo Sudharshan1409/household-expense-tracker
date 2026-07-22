@@ -27,7 +27,7 @@ export default function SettingsPage() {
         const detailedHouseholds = await Promise.all(
           memberships.map(async (m: any) => {
             const meta = await getHousehold(token, m.householdId);
-            return { ...m, name: meta?.name || "Unknown Household" };
+            return { ...m, name: meta?.name || "Unknown Household", inviteCode: meta?.inviteCode || "UNKNOWN" };
           })
         );
         
