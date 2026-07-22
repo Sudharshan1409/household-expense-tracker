@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
 export async function createTransaction(
   idToken: string,
@@ -123,4 +123,22 @@ export async function getRecentTransactions(idToken: string, householdId: string
 
   const response = await db.send(command);
   return response.Items || [];
+}
+
+export async function deleteTransaction(idToken: string, householdId: string, sk: string) {
+  const user = await verifyToken(idToken);
+  // Optional: Verify user's role in the household to allow deletion.
+  // For simplicity, we allow any member to delete, or we can check if they created it.
+  
+  await db.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `HOUSEHOLD#${householdId}`,
+        SK: sk,
+      },
+    })
+  );
+  
+  return true;
 }

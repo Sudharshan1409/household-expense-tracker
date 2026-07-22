@@ -282,6 +282,7 @@ export default function Dashboard() {
             onClose={() => setSelectedTx(null)}
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
+            onDelete={loadTransactions}
           />
           <ManageHouseholdModal
             isOpen={isManageModalOpen}

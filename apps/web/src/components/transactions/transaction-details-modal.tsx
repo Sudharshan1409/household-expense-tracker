@@ -2,21 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Receipt, SplitSquareHorizontal, User, Loader2 } from "lucide-react";
+import { X, Receipt, SplitSquareHorizontal, User, Loader2, Trash2 } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers } from "@/actions/household";
 import { getDownloadPresignedUrl } from "@/actions/s3";
+import { deleteTransaction } from "@/actions/transaction";
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: any;
   householdId: string;
+  onDelete?: () => void;
 }
 
-export function TransactionDetailsModal({ isOpen, onClose, transaction, householdId }: TransactionDetailsModalProps) {
+export function TransactionDetailsModal({ isOpen, onClose, transaction, householdId, onDelete }: TransactionDetailsModalProps) {
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -57,6 +60,26 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       alert("Failed to securely open receipt");
     } finally {
       setIsOpeningReceipt(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this transaction? This cannot be undone.")) return;
+    
+    setIsDeleting(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (token) {
+        await deleteTransaction(token, householdId, transaction.SK);
+        if (onDelete) onDelete();
+        onClose();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete transaction");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,6 +164,21 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
               )}
             </div>
           )}
+          
+          <div className="mt-8 flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={onClose}>
+              Close
+            </Button>
+            <Button 
+              variant="destructive" 
+              className="flex-1" 
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </Button>
+          </div>
         </div>
       </div>
       

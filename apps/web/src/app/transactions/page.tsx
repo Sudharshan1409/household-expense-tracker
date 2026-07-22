@@ -203,6 +203,7 @@ export default function TransactionsPage() {
             onClose={() => setSelectedTx(null)}
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
+            onDelete={loadTransactions}
           />
         </>
       )}
