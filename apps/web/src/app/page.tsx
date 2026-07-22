@@ -159,7 +159,7 @@ export default function Dashboard() {
           value={`₹${totalSpend.toFixed(2)}`}
           description="Total expenses across all members"
           trend={{ 
-            value: spendDiff !== 0 ? `${Math.abs(spendDiff).toFixed(1)}%` : "0%", 
+            value: spendDiff !== 0 ? `${spendDiff > 0 ? "+" : "-"}${Math.abs(spendDiff).toFixed(1)}%` : "+0%", 
             label: spendDiff > 0 ? "vs last month" : "vs last month", 
             isPositive: spendDiff <= 0 // less spend is positive
           }}
@@ -169,7 +169,7 @@ export default function Dashboard() {
           value={`₹${mySpend.toFixed(2)}`}
           description="Your share of expenses"
           trend={{ 
-            value: mySpendDiff !== 0 ? `${Math.abs(mySpendDiff).toFixed(1)}%` : "0%", 
+            value: mySpendDiff !== 0 ? `${mySpendDiff > 0 ? "+" : "-"}${Math.abs(mySpendDiff).toFixed(1)}%` : "+0%", 
             label: mySpendDiff > 0 ? "vs last month" : "vs last month", 
             isPositive: mySpendDiff <= 0 
           }}

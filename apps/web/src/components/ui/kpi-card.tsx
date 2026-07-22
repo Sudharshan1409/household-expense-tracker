@@ -29,8 +29,7 @@ export function KPICard({ title, value, icon, description, trend }: KPICardProps
                 trend.isPositive ? "text-emerald-500" : "text-destructive"
               }
             >
-              {trend.isPositive ? "+" : ""}
-              {trend.value}%
+              {trend.value}
             </span>{" "}
             {trend.label}
           </p>
