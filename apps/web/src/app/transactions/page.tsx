@@ -58,6 +58,16 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     loadTransactions();
+    
+    // Check if we should open the modal from URL params
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "true") {
+        setIsAddModalOpen(true);
+        // Optional: remove it from URL so it doesn't re-trigger on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, [activeHousehold?.householdId, selectedMonth]);
 
   const getMemberName = (id: string) => {

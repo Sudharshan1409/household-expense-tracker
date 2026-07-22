@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Home, List, PieChart, Settings, Wallet, LineChart } from "lucide-react";
 
 export function BottomNav() {
+  const pathname = usePathname();
+  if (pathname === "/onboarding" || pathname.startsWith("/auth") || pathname.startsWith("/invite")) {
+    return null;
+  }
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t bg-background pb-safe">
       <Link

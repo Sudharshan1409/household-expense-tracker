@@ -1,8 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart } from "lucide-react";
 import { UserMenu } from "@/components/auth/user-menu";
 
 export function Sidebar() {
+  const pathname = usePathname();
+  if (pathname === "/onboarding" || pathname.startsWith("/auth") || pathname.startsWith("/invite")) {
+    return null;
+  }
+
   return (
     <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-muted/40">
       <div className="flex h-14 items-center border-b px-6 font-semibold tracking-tight">
