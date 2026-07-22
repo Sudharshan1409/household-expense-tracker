@@ -115,7 +115,7 @@ export default function Dashboard() {
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 hidden sm:flex"
+                  className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 flex"
                   onClick={() => {
                     const inviteLink = `${window.location.origin}/invite/${activeHousehold.householdId}`;
                     navigator.clipboard.writeText(inviteLink);
@@ -129,7 +129,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 size="icon" 
-                className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 hidden sm:flex"
+                className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 flex"
                 onClick={() => setIsManageModalOpen(true)}
                 title="Manage Household"
               >
@@ -142,9 +142,9 @@ export default function Dashboard() {
             <HouseholdSwitcher />
           </div>
           
-          <Button onClick={() => setIsModalOpen(true)} className="hidden sm:flex ml-2">
-            <IndianRupee className="mr-2 h-4 w-4" />
-            Add Expense
+          <Button onClick={() => setIsModalOpen(true)} className="ml-1 sm:ml-2 h-10 px-3 sm:px-4">
+            <IndianRupee className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Add Expense</span>
           </Button>
         </div>
       </div>
