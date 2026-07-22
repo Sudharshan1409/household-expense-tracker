@@ -8,6 +8,7 @@ import { createTransaction } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { getUploadPresignedUrl } from "@/actions/s3";
 import { useHousehold } from "@/components/providers/household-provider";
+import { format } from "date-fns";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
