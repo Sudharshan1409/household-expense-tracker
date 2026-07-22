@@ -151,3 +151,28 @@ export async function deleteTransaction(idToken: string, householdId: string, sk
   
   return true;
 }
+
+export async function getTransactionsFromDate(idToken: string, householdId: string, startDateIso: string) {
+  await verifyToken(idToken);
+
+  const command = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK >= :start",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":start": `TRANSACTION#${startDateIso}`,
+    },
+    ScanIndexForward: false, // Descending order (newest first)
+  });
+
+  const response = await db.send(command);
+  const items = response.Items || [];
+  
+  items.sort((a, b) => {
+    const dateA = new Date(a.date || a.createdAt).getTime();
+    const dateB = new Date(b.date || b.createdAt).getTime();
+    return dateB - dateA;
+  });
+
+  return items;
+}
