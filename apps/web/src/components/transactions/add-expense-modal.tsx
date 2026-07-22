@@ -68,7 +68,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         
         // initialize splits evenly if EQUAL
         if (splitType === "EQUAL") {
-          const defaultSplit = {};
+          const defaultSplit: Record<string, number> = {};
           mems.forEach(m => defaultSplit[m.userId] = 0);
           setSplits(defaultSplit);
         }

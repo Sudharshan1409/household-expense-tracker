@@ -35,18 +35,18 @@ export function UserMenu() {
     const unsubscribe = Hub.listen("auth", ({ payload }) => {
       console.log("Auth Hub Event:", payload.event);
       switch (payload.event) {
-        case "signIn":
+        case "signedIn":
         case "signInWithRedirect":
           if (pollInterval) clearInterval(pollInterval);
           // Manually clear the URL of OAuth parameters in Next.js App Router
-          router.replace(window.location.pathname);
+          window.history.replaceState({}, document.title, window.location.pathname);
           checkUser();
           break;
         case "signInWithRedirect_failure":
           console.error("OAuth Redirect Failure:", payload.data);
           setIsLoading(false);
           break;
-        case "signOut":
+        case "signedOut":
           setUser(null);
           setName("");
           setIsLoading(false);
