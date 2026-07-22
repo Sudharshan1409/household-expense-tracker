@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PieChart as PieChartIcon, TrendingUp, Users, Calendar, Download } from "lucide-react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
-import { getHouseholdMembers, updateCategoryBudgets } from "@/actions/household";
+import { getHouseholdMembers } from "@/actions/household";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText } from "lucide-react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -29,23 +32,60 @@ export default function ReportsPage() {
 
   const handleExportCSV = () => {
     if (transactions.length === 0) return;
-    const headers = ["Date,Description,Category,Amount,Paid By"];
-    const rows = transactions.map(tx => {
-      const date = new Date(tx.createdAt).toLocaleDateString();
-      const desc = `"${tx.description.replace(/"/g, '""')}"`;
-      const cat = `"${tx.category || ''}"`;
-      const amt = tx.amount;
-      const payer = getMemberName(tx.paidBy);
-      return `${date},${desc},${cat},${amt},${payer}`;
+    const headers = ["Date", "Description", "Category", "Amount", "Paid By", "Type"];
+    const csvContent = [
+      headers.join(","),
+      ...transactions.map(t => {
+        const payer = members.find(m => m.userId === t.paidBy)?.userName || "Unknown";
+        return `${new Date(t.date).toLocaleDateString()},"${t.description}",${t.category},${t.amount},"${payer}",${t.transactionType || "EXPENSE"}`;
+      })
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `transactions_${selectedMonth}.csv`;
+    link.click();
+  };
+
+  const handleExportExcel = () => {
+    if (transactions.length === 0) return;
+    const data = transactions.map(t => ({
+      Date: new Date(t.date).toLocaleDateString(),
+      Description: t.description,
+      Category: t.category,
+      Amount: t.amount,
+      "Paid By": members.find(m => m.userId === t.paidBy)?.userName || "Unknown",
+      Type: t.transactionType || "EXPENSE"
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+    XLSX.writeFile(workbook, `transactions_${selectedMonth}.xlsx`);
+  };
+
+  const handleExportPDF = () => {
+    if (transactions.length === 0) return;
+    const doc = new jsPDF();
+    doc.text(`Household Transactions - ${selectedMonth}`, 14, 15);
+    
+    const tableColumn = ["Date", "Description", "Category", "Amount", "Paid By", "Type"];
+    const tableRows = transactions.map(t => [
+      new Date(t.date).toLocaleDateString(),
+      t.description,
+      t.category,
+      t.amount.toString(),
+      members.find(m => m.userId === t.paidBy)?.userName || "Unknown",
+      t.transactionType || "EXPENSE"
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
     });
-    const csv = headers.concat(rows).join("\\n");
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions_${selectedMonth}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    
+    doc.save(`transactions_${selectedMonth}.pdf`);
   };
 
   useEffect(() => {
@@ -148,16 +188,39 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
-        <Button 
-          variant="outline" 
-          onClick={handleExportCSV} 
-          disabled={isLoading || transactions.length === 0}
-          className="h-10"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+      <div className="flex justify-end gap-3 flex-wrap">
+        <div className="flex rounded-md shadow-sm" role="group">
+          <Button 
+            variant="outline" 
+            onClick={handleExportCSV} 
+            disabled={isLoading || transactions.length === 0}
+            className="h-10 rounded-none rounded-l-md border-r-0"
+            title="Export to CSV"
+          >
+            <Download className="h-4 w-4" />
+            <span className="ml-2 hidden sm:inline">CSV</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleExportExcel} 
+            disabled={isLoading || transactions.length === 0}
+            className="h-10 rounded-none border-r-0 text-green-600 dark:text-green-400"
+            title="Export to Excel"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span className="ml-2 hidden sm:inline">Excel</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleExportPDF} 
+            disabled={isLoading || transactions.length === 0}
+            className="h-10 rounded-none rounded-r-md text-red-600 dark:text-red-400"
+            title="Export to PDF"
+          >
+            <FileText className="h-4 w-4" />
+            <span className="ml-2 hidden sm:inline">PDF</span>
+          </Button>
+        </div>
         <input 
           type="month" 
           value={selectedMonth}

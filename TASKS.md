@@ -107,8 +107,8 @@ Checkboxes are the implementation source of progress.
 
 ## Phase 10 — Export
 - [x] CSV export
-- [ ] XLSX export
-- [ ] PDF report export
+- [x] XLSX export
+- [x] PDF report export
 - [ ] JSON backup/export
 - [ ] Date/category/member filters for export
 
