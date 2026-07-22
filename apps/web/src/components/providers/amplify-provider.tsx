@@ -3,6 +3,11 @@
 import { Amplify } from "aws-amplify";
 import 'aws-amplify/auth/enable-oauth-listener';
 
+const redirectUrl =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/`
+    : "http://localhost:3000/";
+
 Amplify.configure({
   Auth: {
     Cognito: {
@@ -12,8 +17,8 @@ Amplify.configure({
         oauth: {
           domain: "household-expense-tracker-dev-157943428055.auth.ap-south-1.amazoncognito.com",
           scopes: ["email", "profile", "openid"],
-          redirectSignIn: ["http://localhost:3000/"],
-          redirectSignOut: ["http://localhost:3000/"],
+          redirectSignIn: [redirectUrl, "http://localhost:3000/"],
+          redirectSignOut: [redirectUrl, "http://localhost:3000/"],
           responseType: "code",
         },
       },
