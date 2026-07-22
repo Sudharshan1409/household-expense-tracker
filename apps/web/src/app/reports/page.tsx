@@ -124,10 +124,12 @@ export default function ReportsPage() {
   }
 
   // --- Data Crunching ---
-  const mySpend = transactions.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
+
+  const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
   
   // 1. Category Data (Individual Share)
-  const categoryMap = transactions.reduce((acc, tx) => {
+  const categoryMap = expenseTxs.reduce((acc, tx) => {
     const cat = tx.category || "Other";
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     if (myShare > 0) {
@@ -140,7 +142,7 @@ export default function ReportsPage() {
     .map(([name, value]) => ({ name, value }));
 
   // 2. Member Data (Who paid for MY expenses)
-  const memberMap = transactions.reduce((acc, tx) => {
+  const memberMap = expenseTxs.reduce((acc, tx) => {
     const mName = getMemberName(tx.paidBy);
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     if (myShare > 0) {
@@ -154,7 +156,7 @@ export default function ReportsPage() {
 
   // 3. Daily Trend Data (Individual Share)
   const dailyMap: Record<string, number> = {};
-  [...transactions].reverse().forEach(tx => {
+  [...expenseTxs].reverse().forEach(tx => {
     const dateStr = format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy");
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
