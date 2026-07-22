@@ -142,7 +142,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       await createTransaction(token, householdId, {
         amount: Number(amount),
         description,
-        category,
+        category: transactionType === "INCOME" ? "Income" : category,
         isShared,
         splitType: isShared ? splitType : "NONE",
         splits: isShared ? splits : {},
@@ -238,7 +238,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid gap-4 ${transactionType === "EXPENSE" ? "grid-cols-2" : "grid-cols-1"}`}>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
                   <input
@@ -253,21 +253,23 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    disabled={isLoading}
-                  >
-                    {activeHousehold?.categories?.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    )) || (
-                      <option value="Other">Other</option>
-                    )}
-                  </select>
-                </div>
+                {transactionType === "EXPENSE" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Category</label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      disabled={isLoading}
+                    >
+                      {activeHousehold?.categories?.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      )) || (
+                        <option value="Other">Other</option>
+                      )}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 
