@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { Search, Filter } from "lucide-react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { getRecentTransactions } from "@/actions/transaction";
@@ -19,6 +20,10 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [isLoadingTx, setIsLoadingTx] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("ALL");
+  const [filterMember, setFilterMember] = useState("ALL");
 
   // Default to current month in IST
   const getISTMonthString = () => {
@@ -59,6 +64,13 @@ export default function TransactionsPage() {
     return m?.userName || "someone else";
   };
 
+  const filteredTransactions = transactions.filter(tx => {
+    const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === "ALL" || tx.category === filterCategory;
+    const matchesMember = filterMember === "ALL" || tx.paidBy === filterMember;
+    return matchesSearch && matchesCategory && matchesMember;
+  });
+
   if (isHouseholdLoading) {
     return <div className="animate-pulse space-y-6"><div className="h-10 w-1/3 bg-muted rounded" /><div className="h-32 bg-muted rounded-xl" /></div>;
   }
@@ -81,13 +93,45 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            placeholder="Search transactions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          />
+        </div>
+        
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
+        >
+          <option value="ALL">All Categories</option>
+          {activeHousehold?.categories?.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterMember}
+          onChange={(e) => setFilterMember(e.target.value)}
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
+        >
+          <option value="ALL">All Members</option>
+          {members.map(m => (
+            <option key={m.userId} value={m.userId}>{m.userName}</option>
+          ))}
+        </select>
+
         <input 
           type="month" 
           value={selectedMonth}
           max={getISTMonthString()}
           onChange={(e) => setSelectedMonth(e.target.value)}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
         />
       </div>
 
@@ -109,7 +153,7 @@ export default function TransactionsPage() {
       ) : (
         <div className="rounded-xl border bg-card shadow-sm">
           <div className="divide-y">
-            {transactions.map((tx) => {
+            {filteredTransactions.map((tx) => {
               const myLiability = tx.splits?.[currentUserId || ""] || 0;
               const isPayer = tx.paidBy === currentUserId;
               

@@ -46,7 +46,7 @@ Checkboxes are the implementation source of progress.
 - [x] Receipt attachment upload
 - [x] Custom categories
 - [ ] Payment methods
-- [ ] Filters/search/pagination
+- [x] Filters/search/pagination
 - [ ] Duplicate warning
 
 ## Phase 4 — Dashboard & analytics
