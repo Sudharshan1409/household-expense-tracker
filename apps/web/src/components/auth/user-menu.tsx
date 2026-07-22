@@ -33,7 +33,7 @@ export function UserMenu() {
     }
 
     const unsubscribe = Hub.listen("auth", ({ payload }) => {
-      console.log("Auth Hub Event:", payload.event, payload.data);
+      console.log("Auth Hub Event:", payload.event);
       switch (payload.event) {
         case "signIn":
         case "signInWithRedirect":
