@@ -6,11 +6,7 @@ interface KPICardProps {
   value: string | number;
   icon?: ReactNode;
   description?: string;
-  trend?: {
-    value: number | string;
-    label: string;
-    isPositive?: boolean;
-  };
+  trend?: any;
 }
 
 export function KPICard({ title, value, icon, description, trend }: KPICardProps) {
