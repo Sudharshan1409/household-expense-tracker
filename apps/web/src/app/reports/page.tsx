@@ -14,6 +14,7 @@ import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSp
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { format } from "date-fns";
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -38,7 +39,7 @@ export default function ReportsPage() {
       headers.join(","),
       ...transactions.map(t => {
         const payer = members.find(m => m.userId === t.paidBy)?.userName || "Unknown";
-        return `${new Date(t.date).toLocaleDateString()},"${t.description}",${t.category},${t.amount},"${payer}",${t.transactionType || "EXPENSE"}`;
+        return `${format(new Date(t.date || t.createdAt), "dd/MM/yyyy")},"${t.description}",${t.category},${t.amount},"${payer}",${t.transactionType || "EXPENSE"}`;
       })
     ].join("\n");
 
@@ -52,7 +53,7 @@ export default function ReportsPage() {
   const handleExportExcel = () => {
     if (transactions.length === 0) return;
     const data = transactions.map(t => ({
-      Date: new Date(t.date).toLocaleDateString(),
+      Date: format(new Date(t.date || t.createdAt), "dd/MM/yyyy"),
       Description: t.description,
       Category: t.category,
       Amount: t.amount,
@@ -72,7 +73,7 @@ export default function ReportsPage() {
     
     const tableColumn = ["Date", "Description", "Category", "Amount", "Paid By", "Type"];
     const tableRows = transactions.map(t => [
-      new Date(t.date).toLocaleDateString(),
+      format(new Date(t.date || t.createdAt), "dd/MM/yyyy"),
       t.description,
       t.category,
       t.amount.toString(),
@@ -154,7 +155,7 @@ export default function ReportsPage() {
   // 3. Daily Trend Data (Individual Share)
   const dailyMap: Record<string, number> = {};
   [...transactions].reverse().forEach(tx => {
-    const dateStr = new Date(tx.date || tx.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const dateStr = format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy");
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
   });

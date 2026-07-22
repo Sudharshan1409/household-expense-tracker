@@ -13,6 +13,7 @@ import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
+import { format } from "date-fns";
 
 export default function TransactionsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
@@ -171,7 +172,7 @@ export default function TransactionsPage() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                         <span className="bg-muted px-2 py-0.5 rounded-full text-xs">{tx.category}</span>
                         <span>•</span>
-                        <span>{new Date(tx.date || tx.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span>{format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy")}</span>
                       </div>
                     </div>
                   </div>

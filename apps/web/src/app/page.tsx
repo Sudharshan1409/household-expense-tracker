@@ -14,6 +14,7 @@ import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
+import { format } from "date-fns";
 
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
@@ -215,7 +216,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{tx.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {tx.category} • {new Date(tx.date || tx.createdAt).toLocaleDateString()}
+                          {tx.category} • {format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy")}
                         </p>
                       </div>
                       <div className="font-semibold text-right">
