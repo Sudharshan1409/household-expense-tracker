@@ -279,7 +279,33 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
           )}
 
           {activeTab === "members" && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {(isOwner || household?.role === "ADMIN") && (
+                <div className="bg-primary/5 rounded-xl border border-primary/10 p-4 space-y-2">
+                  <h3 className="font-semibold text-primary flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Invite Members
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Share this code with your family or roommates to join this household.
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <code className="flex-1 bg-background border px-3 py-2 rounded-md font-mono text-center tracking-widest font-bold text-lg select-all">
+                      {household?.inviteCode}
+                    </code>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(household?.inviteCode || "");
+                        alert("Invite code copied to clipboard!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {isFetchingMembers ? (
                 <div className="space-y-3 animate-pulse">
                   {[1, 2].map(i => <div key={i} className="h-16 bg-muted rounded-lg" />)}
