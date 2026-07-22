@@ -154,7 +154,7 @@ export default function ReportsPage() {
   // 3. Daily Trend Data (Individual Share)
   const dailyMap: Record<string, number> = {};
   [...transactions].reverse().forEach(tx => {
-    const dateStr = new Date(tx.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const dateStr = new Date(tx.date || tx.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
   });

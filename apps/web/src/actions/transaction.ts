@@ -51,7 +51,7 @@ export async function createTransaction(
       TableName: TABLE_NAME,
       Item: {
         PK: `HOUSEHOLD#${householdId}`,
-        SK: `TRANSACTION#${now}#${transactionId}`,
+        SK: `TRANSACTION#${data.date || now}#${transactionId}`,
         id: transactionId,
         householdId,
         createdBy: user.userId,

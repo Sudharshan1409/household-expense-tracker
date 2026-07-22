@@ -215,7 +215,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{tx.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {tx.category} • {new Date(tx.createdAt).toLocaleDateString()}
+                          {tx.category} • {new Date(tx.date || tx.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="font-semibold text-right">

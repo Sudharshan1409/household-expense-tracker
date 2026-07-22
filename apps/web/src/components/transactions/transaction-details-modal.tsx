@@ -110,7 +110,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <span className="bg-muted px-2 py-0.5 rounded-full text-xs">{transaction.category}</span>
             <span>•</span>
-            <span>{new Date(transaction.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            <span>{new Date(transaction.date || transaction.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
           
           <div className="mt-6 flex flex-col items-center justify-center p-6 bg-muted/20 rounded-xl border border-dashed">
