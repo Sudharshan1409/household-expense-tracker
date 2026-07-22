@@ -294,9 +294,9 @@ export default function Dashboard() {
           {/* Mobile FAB for Add Expense */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="md:hidden fixed bottom-20 right-4 z-40 flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
+            className="md:hidden fixed bottom-20 right-4 z-40 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
           >
-            <Plus className="h-5 w-5" />
+            <IndianRupee className="h-5 w-5" />
             <span>Add Expense</span>
           </button>
         </>
