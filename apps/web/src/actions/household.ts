@@ -224,10 +224,29 @@ export async function getHouseholdMembers(idToken: string, householdId: string) 
 }
 
 /**
+ * Helper to verify caller is OWNER
+ */
+async function verifyOwner(userId: string, householdId: string) {
+  const membershipCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `MEMBER#${userId}`,
+    },
+  });
+  const res = await db.send(membershipCommand);
+  if (!res.Items || res.Items.length === 0 || res.Items[0].role !== "OWNER") {
+    throw new Error("Unauthorized: Only the owner can perform this action");
+  }
+}
+
+/**
  * Update household settings (Name, Budget). Owner or Admin only.
  */
 export async function updateHouseholdSettings(idToken: string, householdId: string, settings: { name: string; monthlyBudget: number }) {
-  await verifyToken(idToken);
+  const user = await verifyToken(idToken);
+  await verifyOwner(user.userId, householdId);
   
   const existingCommand = new QueryCommand({
     TableName: TABLE_NAME,
@@ -262,9 +281,9 @@ export async function updateHouseholdSettings(idToken: string, householdId: stri
  * Remove a member from a household (Owner only).
  */
 export async function removeMember(idToken: string, householdId: string, targetUserId: string) {
-  await verifyToken(idToken);
+  const user = await verifyToken(idToken);
+  await verifyOwner(user.userId, householdId);
 
-  // In a real app, verify caller is OWNER here
   const command = new DeleteCommand({
     TableName: TABLE_NAME,
     Key: {
@@ -281,9 +300,9 @@ export async function removeMember(idToken: string, householdId: string, targetU
  * Change a member's role (Owner only).
  */
 export async function changeMemberRole(idToken: string, householdId: string, targetUserId: string, newRole: "OWNER" | "ADMIN" | "MEMBER") {
-  await verifyToken(idToken);
+  const user = await verifyToken(idToken);
+  await verifyOwner(user.userId, householdId);
 
-  // In a real app, verify caller is OWNER here
   const command = new PutCommand({
     TableName: TABLE_NAME,
     Item: {
@@ -294,7 +313,7 @@ export async function changeMemberRole(idToken: string, householdId: string, tar
       userId: targetUserId,
       householdId,
       role: newRole,
-      joinedAt: new Date().toISOString(), // Using now for simplicity, real app should fetch original
+      joinedAt: new Date().toISOString(),
     },
   });
 
