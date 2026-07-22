@@ -113,16 +113,25 @@ export async function getRecentTransactions(idToken: string, householdId: string
     };
   }
 
-  const command = new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: keyCondition,
-    ExpressionAttributeValues: expressionValues,
-    ScanIndexForward: false, // Descending order (newest first)
-    Limit: limit,
-  });
+  let items: any[] = [];
+  let lastEvaluatedKey: any = undefined;
 
-  const response = await db.send(command);
-  const items = response.Items || [];
+  do {
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: keyCondition,
+      ExpressionAttributeValues: expressionValues,
+      ScanIndexForward: false, // Descending order (newest first)
+      Limit: limit,
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+
+    const response = await db.send(command);
+    items = items.concat(response.Items || []);
+    lastEvaluatedKey = response.LastEvaluatedKey;
+  } while (lastEvaluatedKey && items.length < limit);
+
+  items = items.slice(0, limit);
   
   // Enforce chronological sorting (newest first) in case SK sorting was thrown off by old createdAt values
   items.sort((a, b) => {
@@ -155,18 +164,25 @@ export async function deleteTransaction(idToken: string, householdId: string, sk
 export async function getTransactionsFromDate(idToken: string, householdId: string, startDateIso: string) {
   await verifyToken(idToken);
 
-  const command = new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: "PK = :pk AND SK >= :start",
-    ExpressionAttributeValues: {
-      ":pk": `HOUSEHOLD#${householdId}`,
-      ":start": `TRANSACTION#${startDateIso}`,
-    },
-    ScanIndexForward: false, // Descending order (newest first)
-  });
+  let items: any[] = [];
+  let lastEvaluatedKey: any = undefined;
 
-  const response = await db.send(command);
-  const items = response.Items || [];
+  do {
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND SK >= :start",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${householdId}`,
+        ":start": `TRANSACTION#${startDateIso}`,
+      },
+      ScanIndexForward: false, // Descending order (newest first)
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+
+    const response = await db.send(command);
+    items = items.concat(response.Items || []);
+    lastEvaluatedKey = response.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
   
   items.sort((a, b) => {
     const dateA = new Date(a.date || a.createdAt).getTime();
