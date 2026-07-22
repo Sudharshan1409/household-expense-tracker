@@ -138,3 +138,16 @@
     @apply font-sans;
   }
 }
+
+/* Force sonner close button to center-right inside the toast */
+[data-sonner-toast] [data-close-button] {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  right: 1rem !important;
+  left: auto !important;
+  position: absolute !important;
+}
+
+[data-sonner-toast] [data-content] {
+  padding-right: 2rem !important;
+}
