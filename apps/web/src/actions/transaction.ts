@@ -122,7 +122,16 @@ export async function getRecentTransactions(idToken: string, householdId: string
   });
 
   const response = await db.send(command);
-  return response.Items || [];
+  const items = response.Items || [];
+  
+  // Enforce chronological sorting (newest first) in case SK sorting was thrown off by old createdAt values
+  items.sort((a, b) => {
+    const dateA = new Date(a.date || a.createdAt).getTime();
+    const dateB = new Date(b.date || b.createdAt).getTime();
+    return dateB - dateA;
+  });
+
+  return items;
 }
 
 export async function deleteTransaction(idToken: string, householdId: string, sk: string) {
