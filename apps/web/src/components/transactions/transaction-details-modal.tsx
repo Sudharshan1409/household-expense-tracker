@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Receipt, SplitSquareHorizontal, User } from "lucide-react";
+import { X, Receipt, SplitSquareHorizontal, User, Loader2 } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers } from "@/actions/household";
+import { getDownloadPresignedUrl } from "@/actions/s3";
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface TransactionDetailsModalProps {
 export function TransactionDetailsModal({ isOpen, onClose, transaction, householdId }: TransactionDetailsModalProps) {
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
 
   useEffect(() => {
     if (isOpen && transaction) {
@@ -36,6 +38,24 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewReceipt = async () => {
+    if (!transaction?.receiptUrl) return;
+    try {
+      setIsOpeningReceipt(true);
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (token) {
+        const presignedUrl = await getDownloadPresignedUrl(token, transaction.receiptUrl);
+        window.open(presignedUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.error("Failed to open receipt", err);
+      alert("Failed to securely open receipt");
+    } finally {
+      setIsOpeningReceipt(false);
     }
   };
 
@@ -77,15 +97,14 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
 
           {transaction.receiptUrl && (
             <div className="mt-4">
-              <a 
-                href={transaction.receiptUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2 bg-muted/50 hover:bg-muted text-primary rounded-lg text-sm font-medium transition-colors"
+              <button 
+                onClick={handleViewReceipt}
+                disabled={isOpeningReceipt}
+                className="flex items-center justify-center gap-2 w-full py-2 bg-muted/50 hover:bg-muted text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
-                <Receipt className="h-4 w-4" />
-                View Original Receipt
-              </a>
+                {isOpeningReceipt ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                {isOpeningReceipt ? "Securely Opening..." : "View Original Receipt"}
+              </button>
             </div>
           )}
         </div>
