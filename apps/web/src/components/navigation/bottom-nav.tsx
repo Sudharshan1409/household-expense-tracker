@@ -26,7 +26,6 @@ export function BottomNav() {
         <List className="h-5 w-5" />
         <span className="text-[10px] font-medium">List</span>
       </Link>
-      <div className="w-12" /> {/* Spacer for FAB */}
       <Link
         href="/reports"
         className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary"

@@ -6,7 +6,6 @@ import { AmplifyProvider } from "@/components/providers/amplify-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { BottomNav } from "@/components/navigation/bottom-nav";
-import { FAB } from "@/components/navigation/fab";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,7 +49,6 @@ export default function RootLayout({
                     </div>
                   </main>
                   <BottomNav />
-                  <FAB />
                 </div>
               </HouseholdProvider>
             </AuthGuard>
