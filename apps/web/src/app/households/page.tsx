@@ -6,6 +6,7 @@ import { getUserHouseholds, getHousehold, leaveHousehold, deleteHousehold } from
 import { Button } from "@/components/ui/button";
 import { Home, Users, UserPlus, LogOut, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function SettingsPage() {
   const [households, setHouseholds] = useState<any[]>([]);
@@ -97,10 +98,11 @@ export default function SettingsPage() {
           </Button>
         </div>
 
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
         {isLoading ? (
-          <div className="animate-pulse h-32 bg-muted rounded-xl" />
+          <PageLoader title="Loading your households..." />
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 p-6">
             {households.map((hh) => (
               <div key={hh.householdId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-card border rounded-xl shadow-sm gap-4">
                 <div>

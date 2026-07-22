@@ -13,6 +13,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
+  const [isLoadingTx, setIsLoadingTx] = useState(true);
 
   // Default to current month in IST
   const getISTMonthString = () => {
@@ -34,6 +36,7 @@ export default function Dashboard() {
 
   const loadTransactions = async () => {
     if (!activeHousehold?.householdId) return;
+    setIsLoadingTx(true);
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
@@ -51,6 +54,8 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoadingTx(false);
     }
   };
 
@@ -58,8 +63,8 @@ export default function Dashboard() {
     loadTransactions();
   }, [activeHousehold?.householdId, selectedMonth]);
 
-  if (isHouseholdLoading) {
-    return <div className="animate-pulse space-y-6"><div className="h-10 w-1/3 bg-muted rounded" /><div className="h-32 bg-muted rounded-xl" /></div>;
+  if (isHouseholdLoading || isLoadingTx) {
+    return <PageLoader title="Loading overview..." />;
   }
 
   // Calculate metrics

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Repeat, Plus, Play, Trash2, Edit2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { fetchAuthSession } from "aws-amplify/auth";
@@ -12,7 +13,7 @@ import { createTransaction } from "@/actions/transaction";
 import { TemplateModal } from "@/components/recurring/recurring-modal";
 
 export default function RecurringPage() {
-  const { activeHousehold, currentUserId } = useHousehold();
+  const { activeHousehold, currentUserId, isLoading: isHouseholdLoading } = useHousehold();
   const [templates, setTemplates] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,8 +102,8 @@ export default function RecurringPage() {
 
       <div className="rounded-xl border bg-card shadow-sm p-6">
         <div className="space-y-4">
-          {isLoading ? (
-            <div className="animate-pulse space-y-4"><div className="h-10 bg-muted rounded"></div></div>
+          {isHouseholdLoading || isLoading ? (
+            <PageLoader title="Loading recurring expenses..." />
           ) : templates.length === 0 ? (
              <EmptyState
               icon={<Repeat className="h-10 w-10 text-muted-foreground" />}

@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/ui/page-loader";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
@@ -230,11 +231,8 @@ export default function ReportsPage() {
         />
       </div>
 
-      {isLoading ? (
-        <div className="animate-pulse space-y-4">
-          <div className="h-48 bg-muted rounded-xl"></div>
-          <div className="h-48 bg-muted rounded-xl"></div>
-        </div>
+      {isHouseholdLoading || isLoading ? (
+        <PageLoader title="Loading reports..." />
       ) : transactions.length === 0 ? (
         <EmptyState
           icon={<PieChartIcon className="h-10 w-10 text-muted-foreground" />}

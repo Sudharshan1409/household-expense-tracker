@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Plus } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { Search, Filter } from "lucide-react";
@@ -72,7 +73,7 @@ export default function TransactionsPage() {
   });
 
   if (isHouseholdLoading) {
-    return <div className="animate-pulse space-y-6"><div className="h-10 w-1/3 bg-muted rounded" /><div className="h-32 bg-muted rounded-xl" /></div>;
+    return <PageLoader title="Loading your household..." />;
   }
 
   return (
@@ -136,9 +137,7 @@ export default function TransactionsPage() {
       </div>
 
       {isLoadingTx ? (
-        <div className="space-y-3 animate-pulse">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-xl" />)}
-        </div>
+        <PageLoader title="Loading transactions..." />
       ) : transactions.length === 0 ? (
         <EmptyState
           title="No transactions found"

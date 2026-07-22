@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Wallet, Target, AlertTriangle } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
@@ -93,8 +94,8 @@ export default function BudgetsPage() {
     }));
   };
 
-  if (isHouseholdLoading) {
-    return <div className="animate-pulse space-y-6"><div className="h-10 w-1/3 bg-muted rounded" /><div className="h-32 bg-muted rounded-xl" /></div>;
+  if (isHouseholdLoading || isLoading) {
+    return <PageLoader title="Loading budget data..." />;
   }
 
   // Calculate actuals based ONLY on the user's individual share of the split
