@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { QueryCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, PutCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import crypto from "node:crypto";
 
@@ -180,6 +180,21 @@ export async function joinHousehold(idToken: string, householdId: string, budget
 
   if (!householdMeta.Items || householdMeta.Items.length === 0) {
     throw new Error("Invalid invite link: Household does not exist");
+  }
+
+  // Check if user is already a member
+  const existingMember = await db.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `HOUSEHOLD#${householdId}`,
+        SK: `MEMBER#${user.userId}`
+      }
+    })
+  );
+
+  if (existingMember.Item) {
+    throw new Error("You are already a member of this household.");
   }
 
   // Add user to household

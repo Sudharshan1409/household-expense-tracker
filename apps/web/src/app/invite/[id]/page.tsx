@@ -2,12 +2,12 @@
 
 import { useEffect, useState, use } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { joinHousehold, getHousehold } from "@/actions/household";
+import { joinHousehold, getHousehold, getUserHouseholds } from "@/actions/household";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 export default function InvitePage({ params }: { params: Promise<{ id: string }> }) {
-  const [status, setStatus] = useState<"loading" | "ready" | "joining" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "joining" | "success" | "error" | "already_member">("loading");
   const [householdName, setHouseholdName] = useState<string>("Loading...");
   const [budget, setBudget] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -22,6 +22,14 @@ export default function InvitePage({ params }: { params: Promise<{ id: string }>
         const session = await fetchAuthSession();
         const token = session.tokens?.idToken?.toString();
         if (!token) throw new Error("No token");
+
+        const memberships = await getUserHouseholds(token);
+        const isAlreadyMember = memberships.some((m: any) => m.householdId === resolvedParams.id);
+        
+        if (isAlreadyMember) {
+          setStatus("already_member");
+          return;
+        }
 
         const metadata = await getHousehold(token, resolvedParams.id);
         if (metadata) {
@@ -131,6 +139,21 @@ export default function InvitePage({ params }: { params: Promise<{ id: string }>
             <p className="text-muted-foreground text-sm">{errorMsg}</p>
             <Button variant="outline" className="w-full mt-4" onClick={() => router.push("/")}>
               Return Home
+            </Button>
+          </div>
+        )}
+
+        {status === "already_member" && (
+          <div className="space-y-4">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="font-medium text-lg">You're already in!</p>
+            <p className="text-muted-foreground text-sm">You are already a member of this household.</p>
+            <Button className="w-full mt-4" onClick={() => router.push("/")}>
+              Go to Dashboard
             </Button>
           </div>
         )}
