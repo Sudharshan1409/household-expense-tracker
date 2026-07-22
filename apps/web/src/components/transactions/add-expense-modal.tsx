@@ -22,6 +22,10 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Other");
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  });
   const [paidBy, setPaidBy] = useState(currentUserId || "");
   const [isShared, setIsShared] = useState(false);
   const [splitType, setSplitType] = useState<"EQUAL" | "PERCENTAGE" | "EXACT">("EQUAL");
@@ -40,6 +44,8 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setAmount("");
       setDescription("");
       setCategory("Other");
+      const d = new Date();
+      setDate(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]);
       setPaidBy(currentUserId || "");
       setIsShared(false);
       setSplitType("EQUAL");
@@ -138,7 +144,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         isShared,
         splitType: isShared ? splitType : "NONE",
         splits: isShared ? splits : {},
-        date: new Date().toISOString(),
+        date: new Date(date).toISOString(),
         transactionType,
         paidBy,
         receiptUrl: finalReceiptUrl,
@@ -217,7 +223,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Description</label>
                 <input
@@ -229,21 +235,35 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   disabled={isLoading}
                 />
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <input
+                    type="date"
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Category</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  disabled={isLoading}
-                >
-                  {activeHousehold?.categories?.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  )) || (
-                    <option value="Other">Other</option>
-                  )}
-                </select>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    {activeHousehold?.categories?.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    )) || (
+                      <option value="Other">Other</option>
+                    )}
+                  </select>
+                </div>
               </div>
             </div>
 
