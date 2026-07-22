@@ -9,6 +9,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // @ts-ignore - bypassing strict NextConfig type checking in case types are outdated
+  allowedDevOrigins: ['192.168.0.124', '192.168.0.125', 'localhost'],
 };
 
 export default withPWA(nextConfig);
