@@ -6,6 +6,7 @@ import { AmplifyProvider } from "@/components/providers/amplify-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { BottomNav } from "@/components/navigation/bottom-nav";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -54,6 +55,7 @@ export default function RootLayout({
             </AuthGuard>
           </ThemeProvider>
         </AmplifyProvider>
+        <Toaster />
       </body>
     </html>
   );
