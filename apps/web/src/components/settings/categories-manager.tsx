@@ -6,6 +6,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { updateHouseholdCategories } from "@/actions/household";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { Trash2, Plus, Tag } from "lucide-react";
+import { toast } from "sonner";
 
 export function CategoriesManager() {
   const { activeHousehold, refreshHouseholds } = useHousehold();
@@ -30,7 +31,7 @@ export function CategoriesManager() {
       await refreshHouseholds();
     } catch (e) {
       console.error(e);
-      alert("Failed to update categories. Only Owners can do this.");
+      toast("Failed to update categories. Only Owners can do this.");
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +40,7 @@ export function CategoriesManager() {
   const addCategory = () => {
     if (!newCat.trim()) return;
     if (categories.includes(newCat.trim())) {
-      alert("Category already exists!");
+      toast("Category already exists!");
       return;
     }
     const updated = [...categories, newCat.trim()];

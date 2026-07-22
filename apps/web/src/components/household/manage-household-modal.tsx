@@ -6,6 +6,7 @@ import { X, Settings, Users, Edit3, Trash2, Shield, User } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole, updateMemberName } from "@/actions/household";
 import { CategoriesManager } from "@/components/settings/categories-manager";
+import { toast } from "sonner";
 
 interface ManageHouseholdModalProps {
   isOpen: boolean;
@@ -72,11 +73,11 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
         // We leave the household-level budget alone for backward compatibility
         await updateHouseholdSettings(token, household.householdId, { name, monthlyBudget: 50000 });
         onSuccess();
-        alert("Household renamed successfully.");
+        toast("Household renamed successfully.");
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to rename household");
+      toast("Failed to rename household");
     } finally {
       setIsLoading(false);
     }
@@ -91,11 +92,11 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       if (token) {
         await updateMemberBudget(token, household.householdId, Number(budget));
         onSuccess(); // Triggers a context refetch
-        alert("Personal budget updated!");
+        toast("Personal budget updated!");
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to save personal budget");
+      toast("Failed to save personal budget");
     } finally {
       setIsBudgetLoading(false);
     }
@@ -110,12 +111,12 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       const token = session.tokens?.idToken?.toString();
       if (token) {
         await updateMemberName(token, household.householdId, userName);
-        alert("Display name updated!");
+        toast("Display name updated!");
         fetchMembers();
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to update name");
+      toast("Failed to update name");
     } finally {
       setIsProfileLoading(false);
     }
@@ -132,7 +133,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to change role.");
+      toast("Failed to change role.");
     }
   };
 
@@ -147,7 +148,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to remove member.");
+      toast("Failed to remove member.");
     }
   };
 
@@ -298,7 +299,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                       onClick={() => {
                         const inviteLink = `${window.location.origin}/invite/${household?.householdId}`;
                         navigator.clipboard.writeText(inviteLink);
-                        alert("Invite link copied to clipboard!");
+                        toast("Invite link copied to clipboard!");
                       }}
                     >
                       Copy Link

@@ -11,6 +11,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { getTemplates, deleteTemplate } from "@/actions/recurring";
 import { createTransaction } from "@/actions/transaction";
 import { TemplateModal } from "@/components/recurring/recurring-modal";
+import { toast } from "sonner";
 
 export default function RecurringPage() {
   const { activeHousehold, currentUserId, isLoading: isHouseholdLoading } = useHousehold();
@@ -58,10 +59,10 @@ export default function RecurringPage() {
         date: new Date().toISOString(),
         paidBy: currentUserId
       });
-      alert(`Success! Generated transaction for ${template.description}.`);
+      toast(`Success! Generated transaction for ${template.description}.`);
     } catch (e) {
       console.error(e);
-      alert("Failed to post transaction.");
+      toast("Failed to post transaction.");
     }
   };
 

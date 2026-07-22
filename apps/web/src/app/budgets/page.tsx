@@ -9,6 +9,7 @@ import { Wallet, Target, AlertTriangle } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers, updateCategoryBudgets } from "@/actions/household";
+import { toast } from "sonner";
 
 const CATEGORIES = [
   "Groceries", "Utilities", "Rent", "Dining Out", "Transportation", 
@@ -81,7 +82,7 @@ export default function BudgetsPage() {
       setIsEditing(false);
     } catch (err) {
       console.error(err);
-      alert("Failed to save budgets");
+      toast("Failed to save budgets");
     } finally {
       setIsSaving(false);
     }

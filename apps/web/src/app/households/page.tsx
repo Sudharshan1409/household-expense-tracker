@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Home, Users, UserPlus, LogOut, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { PageLoader } from "@/components/ui/page-loader";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [households, setHouseholds] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export default function SettingsPage() {
   const handleCopyInvite = (householdId: string) => {
     const inviteLink = `${window.location.origin}/invite/${householdId}`;
     navigator.clipboard.writeText(inviteLink);
-    alert("Invite link copied to clipboard!");
+    toast("Invite link copied to clipboard!");
   };
 
   const handleLeave = async (householdId: string) => {
@@ -62,7 +63,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Failed to leave", error);
-      alert("Failed to leave household.");
+      toast("Failed to leave household.");
     }
   };
 
@@ -77,7 +78,7 @@ export default function SettingsPage() {
       }
     } catch (error: any) {
       console.error("Failed to delete", error);
-      alert(error.message || "Failed to delete household.");
+      toast(error.message || "Failed to delete household.");
     }
   };
 

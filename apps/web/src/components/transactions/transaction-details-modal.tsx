@@ -8,6 +8,7 @@ import { getHouseholdMembers } from "@/actions/household";
 import { getDownloadPresignedUrl } from "@/actions/s3";
 import { deleteTransaction } from "@/actions/transaction";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
@@ -58,7 +59,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       }
     } catch (err) {
       console.error("Failed to open receipt", err);
-      alert("Failed to securely open receipt");
+      toast("Failed to securely open receipt");
     } finally {
       setIsOpeningReceipt(false);
     }
@@ -78,7 +79,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to delete transaction");
+      toast("Failed to delete transaction");
     } finally {
       setIsDeleting(false);
     }

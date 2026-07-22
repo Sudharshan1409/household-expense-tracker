@@ -15,6 +15,7 @@ import { ManageHouseholdModal } from "@/components/household/manage-household-mo
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
@@ -119,7 +120,7 @@ export default function Dashboard() {
                   onClick={() => {
                     const inviteLink = `${window.location.origin}/invite/${activeHousehold.householdId}`;
                     navigator.clipboard.writeText(inviteLink);
-                    alert("Invite link copied to clipboard!");
+                    toast("Invite link copied to clipboard!");
                   }}
                   title="Copy Invite Link"
                 >

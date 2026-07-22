@@ -9,6 +9,7 @@ import { getHouseholdMembers } from "@/actions/household";
 import { getUploadPresignedUrl } from "@/actions/s3";
 import { useHousehold } from "@/components/providers/household-provider";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -94,13 +95,13 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       if (splitType === "PERCENTAGE") {
         const totalPct = Object.values(splits).reduce((a, b) => a + b, 0);
         if (Math.abs(totalPct - 100) > 0.01) {
-          alert("Percentages must add up to 100%");
+          toast("Percentages must add up to 100%");
           return;
         }
       } else if (splitType === "EXACT") {
         const totalSplit = Object.values(splits).reduce((a, b) => a + b, 0);
         if (Math.abs(totalSplit - totalAmount) > 0.01) {
-          alert(`Exact splits must add up to ${totalAmount}`);
+          toast(`Exact splits must add up to ${totalAmount}`);
           return;
         }
       }
@@ -158,7 +159,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setSplitType("EQUAL");
     } catch (err) {
       console.error(err);
-      alert("Failed to create expense");
+      toast("Failed to create expense");
     } finally {
       setIsLoading(false);
     }

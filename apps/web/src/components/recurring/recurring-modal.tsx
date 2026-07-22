@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { createTemplate, updateTemplate } from "@/actions/recurring";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { toast } from "sonner";
 
 const CATEGORIES = [
   "Groceries", "Utilities", "Rent", "Dining Out", "Transportation", 
@@ -72,7 +73,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
       onClose();
     } catch (error) {
       console.error(error);
-      alert("Failed to save template");
+      toast("Failed to save template");
     } finally {
       setIsSubmitting(false);
     }
