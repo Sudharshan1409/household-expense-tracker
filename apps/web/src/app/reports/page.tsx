@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
+import { KPICard } from "@/components/ui/kpi-card";
 import { PageLoader } from "@/components/ui/page-loader";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
@@ -125,8 +126,11 @@ export default function ReportsPage() {
 
   // --- Data Crunching ---
   const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
+  const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
 
   const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  const mySavings = myIncome - mySpend;
   
   // 1. Category Data (Individual Share)
   const categoryMap = expenseTxs.reduce((acc, tx) => {
@@ -238,12 +242,34 @@ export default function ReportsPage() {
         <PageLoader title="Loading reports..." />
       ) : transactions.length === 0 ? (
         <EmptyState
-          icon={<PieChartIcon className="h-10 w-10 text-muted-foreground" />}
-          title="Not enough data"
-          description={`Add more expenses for ${selectedMonth} to see detailed charts and reports.`}
+          title="No data available"
+          description={`No transactions found for ${selectedMonth}.`}
         />
       ) : (
         <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <KPICard
+              title="Total Income"
+              value={`₹${myIncome.toFixed(2)}`}
+              description="Your recorded income"
+            />
+            <KPICard
+              title="Total Spend"
+              value={`₹${mySpend.toFixed(2)}`}
+              description="Your recorded expenses"
+            />
+            <KPICard
+              title="Net Savings"
+              value={`₹${mySavings.toFixed(2)}`}
+              description="Income minus expenses"
+              trend={{ 
+                value: mySavings >= 0 ? "Positive" : "Negative", 
+                label: "cash flow", 
+                isPositive: mySavings >= 0 
+              }}
+            />
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
             
             {/* Category Pie Chart */}

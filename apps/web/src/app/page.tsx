@@ -159,7 +159,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <KPICard
           title="Total Household Spend"
           value={`₹${totalSpend.toFixed(2)}`}
@@ -178,6 +178,21 @@ export default function Dashboard() {
             value: mySpendDiff !== 0 ? `${mySpendDiff > 0 ? "+" : "-"}${Math.abs(mySpendDiff).toFixed(1)}%` : "+0%", 
             label: mySpendDiff > 0 ? "vs last month" : "vs last month", 
             isPositive: mySpendDiff <= 0 
+          }}
+        />
+        <KPICard
+          title="My Total Income"
+          value={`₹${myIncome.toFixed(2)}`}
+          description="Your logged income"
+        />
+        <KPICard
+          title="My Savings"
+          value={`₹${mySavings.toFixed(2)}`}
+          description="Income minus your spend"
+          trend={{ 
+            value: mySavings >= 0 ? "Positive" : "Negative", 
+            label: "cash flow", 
+            isPositive: mySavings >= 0 
           }}
         />
         <KPICard
