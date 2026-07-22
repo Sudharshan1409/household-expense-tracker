@@ -202,8 +202,7 @@ export default function Dashboard() {
                 <EmptyState
                   title="No expenses yet"
                   description={`You haven't recorded any expenses for ${selectedMonth}.`}
-                  actionLabel="Add your first expense"
-                  onAction={() => setIsModalOpen(true)}
+                  action={<Button onClick={() => setIsModalOpen(true)}>Add your first expense</Button>}
                 />
               ) : (
                 <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">

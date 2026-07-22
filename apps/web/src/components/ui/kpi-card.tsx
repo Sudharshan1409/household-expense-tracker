@@ -7,7 +7,7 @@ interface KPICardProps {
   icon?: ReactNode;
   description?: string;
   trend?: {
-    value: number;
+    value: number | string;
     label: string;
     isPositive?: boolean;
   };
