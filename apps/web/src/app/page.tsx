@@ -11,10 +11,13 @@ import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
+import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
+import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
@@ -99,9 +102,41 @@ export default function Dashboard() {
             Here's what's happening in your household.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <HouseholdSwitcher />
-          <Button onClick={() => setIsModalOpen(true)} className="hidden sm:flex">
+        <div className="flex items-center gap-2">
+          {activeHousehold && (
+            <>
+              {(activeHousehold.role === "OWNER" || activeHousehold.role === "ADMIN") && (
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 hidden sm:flex"
+                  onClick={() => {
+                    const inviteLink = `${window.location.origin}/invite/${activeHousehold.householdId}`;
+                    navigator.clipboard.writeText(inviteLink);
+                    alert("Invite link copied to clipboard!");
+                  }}
+                  title="Copy Invite Link"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-10 w-10 text-muted-foreground hover:text-primary shrink-0 hidden sm:flex"
+                onClick={() => setIsManageModalOpen(true)}
+                title="Manage Household"
+              >
+                <SettingsIcon className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          
+          <div className="mx-1">
+            <HouseholdSwitcher />
+          </div>
+          
+          <Button onClick={() => setIsModalOpen(true)} className="hidden sm:flex ml-2">
             <IndianRupee className="mr-2 h-4 w-4" />
             Add Expense
           </Button>
@@ -242,6 +277,12 @@ export default function Dashboard() {
             onClose={() => setSelectedTx(null)}
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
+          />
+          <ManageHouseholdModal
+            isOpen={isManageModalOpen}
+            onClose={() => setIsManageModalOpen(false)}
+            household={activeHousehold}
+            onSuccess={() => setIsManageModalOpen(false)}
           />
         </>
       )}
