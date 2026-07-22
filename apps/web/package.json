@@ -37,16 +37,19 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/plugin-kit": "^0.4.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "browserslist": "^4.28.7",
     "electron-to-chromium": "^1.5.395",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "postcss": "^8.5.20",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }

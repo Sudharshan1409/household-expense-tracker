@@ -40,24 +40,6 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (isOpen) {
-      loadMembers();
-      setAmount("");
-      setDescription("");
-      setCategory("Other");
-      const d = new Date();
-      setDate(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]);
-      setPaidBy(currentUserId || "");
-      setIsShared(false);
-      setSplitType("EQUAL");
-      setSplits({});
-      setTransactionType("EXPENSE");
-      setReceiptFile(null);
-      setError("");
-    }
-  }, [isOpen, currentUserId]);
-
   const loadMembers = async () => {
     try {
       const session = await fetchAuthSession();
@@ -66,8 +48,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         const mems = await getHouseholdMembers(token, householdId);
         setMembers(mems);
         
-        // initialize splits evenly if EQUAL
-        if (splitType === "EQUAL") {
+        if (mems.length > 0) {
           const defaultSplit: Record<string, number> = {};
           mems.forEach(m => defaultSplit[m.userId] = 0);
           setSplits(defaultSplit);
@@ -77,6 +58,22 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadMembers();
+      setAmount("");
+      setDescription("");
+      setCategory("Other");
+      const d = new Date();
+      d.setHours(d.getHours() + 5);
+      d.setMinutes(d.getMinutes() + 30);
+      setDate(d.toISOString().split("T")[0]);
+      setSplitType("EQUAL");
+      setPaidBy(currentUserId || "");
+      setError("");
+    }
+  }, [isOpen, currentUserId]);
 
   const handleSplitChange = (userId: string, val: string) => {
     setSplits(prev => ({

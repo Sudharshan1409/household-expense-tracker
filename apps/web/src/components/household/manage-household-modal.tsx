@@ -28,14 +28,6 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
 
   const isOwner = household?.role === "OWNER";
 
-  useEffect(() => {
-    setName(household?.name || "");
-    setBudget(household?.monthlyBudget || 50000);
-    if (isOpen) {
-      fetchMembers();
-    }
-  }, [isOpen, household]);
-
   const fetchMembers = async () => {
     setIsFetchingMembers(true);
     try {
@@ -47,7 +39,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
         currentUserId = JSON.parse(atob(payloadBase64)).sub;
       }
       
-      if (token) {
+      if (token && household?.householdId) {
         const data = await getHouseholdMembers(token, household.householdId);
         setMembers(data);
         const me = data.find((m: any) => m.userId === currentUserId);
@@ -59,6 +51,14 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       setIsFetchingMembers(false);
     }
   };
+
+  useEffect(() => {
+    setName(household?.name || "");
+    setBudget(household?.monthlyBudget || 50000);
+    if (isOpen) {
+      fetchMembers();
+    }
+  }, [isOpen, household]);
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -24,27 +24,27 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
   const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && transaction) {
-      loadMembers();
-    }
-  }, [isOpen, transaction]);
-
   const loadMembers = async () => {
     setIsLoading(true);
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
-      if (token) {
+      if (token && householdId) {
         const mems = await getHouseholdMembers(token, householdId);
         setMembers(mems);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && transaction) {
+      loadMembers();
+    }
+  }, [isOpen, transaction]);
 
   const handleViewReceipt = async () => {
     if (!transaction?.receiptUrl) return;

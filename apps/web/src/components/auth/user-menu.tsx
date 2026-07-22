@@ -14,6 +14,40 @@ export function UserMenu() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+
+
+  async function checkUser() {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      
+      try {
+        const session = await fetchAuthSession();
+        const payload = session.tokens?.idToken?.payload;
+        
+        if (payload) {
+          const displayName = payload.given_name 
+            ? `${payload.given_name} ${payload.family_name || ""}`.trim() 
+            : payload.email || currentUser.username;
+          setName(displayName as string);
+        } else {
+          setName(currentUser.username);
+        }
+      } catch (attrError) {
+        console.error("Could not fetch session payload", attrError);
+        setName(currentUser.username);
+      }
+      setIsLoading(false);
+    } catch (err) {
+      setUser(null);
+      setName("");
+      // Only stop loading if we are not actively in an OAuth redirect flow
+      if (typeof window !== "undefined" && !window.location.search.includes("code=")) {
+        setIsLoading(false);
+      }
+    }
+  }
+
   useEffect(() => {
     checkUser();
 
@@ -59,38 +93,6 @@ export function UserMenu() {
       if (pollInterval) clearInterval(pollInterval);
     };
   }, []);
-
-  async function checkUser() {
-    try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      
-      try {
-        const session = await fetchAuthSession();
-        const payload = session.tokens?.idToken?.payload;
-        
-        if (payload) {
-          const displayName = payload.given_name 
-            ? `${payload.given_name} ${payload.family_name || ""}`.trim() 
-            : payload.email || currentUser.username;
-          setName(displayName as string);
-        } else {
-          setName(currentUser.username);
-        }
-      } catch (attrError) {
-        console.error("Could not fetch session payload", attrError);
-        setName(currentUser.username);
-      }
-      setIsLoading(false);
-    } catch (err) {
-      setUser(null);
-      setName("");
-      // Only stop loading if we are not actively in an OAuth redirect flow
-      if (typeof window !== "undefined" && !window.location.search.includes("code=")) {
-        setIsLoading(false);
-      }
-    }
-  }
 
   const handleSignOut = async () => {
     try {
