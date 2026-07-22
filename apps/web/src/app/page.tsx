@@ -142,9 +142,9 @@ export default function Dashboard() {
             <HouseholdSwitcher />
           </div>
           
-          <Button onClick={() => setIsModalOpen(true)} className="ml-1 sm:ml-2 h-10 px-3 sm:px-4">
-            <IndianRupee className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Add Expense</span>
+          <Button onClick={() => setIsModalOpen(true)} className="hidden sm:flex ml-2">
+            <IndianRupee className="mr-2 h-4 w-4" />
+            Add Expense
           </Button>
         </div>
       </div>
@@ -290,6 +290,15 @@ export default function Dashboard() {
             household={activeHousehold}
             onSuccess={() => setIsManageModalOpen(false)}
           />
+          
+          {/* Mobile FAB for Add Expense */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="md:hidden fixed bottom-20 right-4 z-40 flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Expense</span>
+          </button>
         </>
       )}
     </div>
