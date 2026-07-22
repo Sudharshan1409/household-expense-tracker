@@ -98,7 +98,6 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
         {isLoading ? (
           <PageLoader title="Loading your households..." />
         ) : (
