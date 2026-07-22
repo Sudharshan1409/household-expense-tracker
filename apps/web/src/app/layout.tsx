@@ -55,7 +55,7 @@ export default function RootLayout({
             </AuthGuard>
           </ThemeProvider>
         </AmplifyProvider>
-        <Toaster />
+        <Toaster position="top-center" closeButton />
       </body>
     </html>
   );
