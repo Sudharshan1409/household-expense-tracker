@@ -142,12 +142,16 @@
 /* Force sonner close button to center-right inside the toast */
 [data-sonner-toast] [data-close-button] {
   top: 50% !important;
+  bottom: auto !important;
   transform: translateY(-50%) !important;
   right: 1rem !important;
   left: auto !important;
   position: absolute !important;
+  margin: 0 !important;
+  background-color: var(--background) !important;
+  border: 1px solid var(--border) !important;
 }
 
 [data-sonner-toast] [data-content] {
-  padding-right: 2rem !important;
+  padding-right: 2.5rem !important;
 }
