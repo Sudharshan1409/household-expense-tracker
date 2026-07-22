@@ -105,15 +105,15 @@ export default function SettingsPage() {
               </span>
             )}
           </form>
-        </Card>
+        </div>
 
-        <Card className="p-6">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 mt-6">
           <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2 mb-4">
             <SettingsIcon className="h-5 w-5 text-muted-foreground" />
             Custom Categories
           </h2>
           <CategoriesManager />
-        </Card>
+        </div>
       </div>
     </div>
   );
