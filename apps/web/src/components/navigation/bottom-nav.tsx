@@ -41,11 +41,9 @@ export function BottomNav() {
       </Link>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary">
-            <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[10px] font-medium">More</span>
-          </button>
+        <SheetTrigger className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary">
+          <MoreHorizontal className="h-5 w-5" />
+          <span className="text-[10px] font-medium">More</span>
         </SheetTrigger>
         <SheetContent side="bottom" className="h-[auto] rounded-t-2xl pb-8">
           <SheetHeader className="mb-4">
