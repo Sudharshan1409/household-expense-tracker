@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
 
   // Default to current month in IST
   const getISTMonthString = () => {
@@ -34,8 +35,16 @@ export default function Dashboard() {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 100, selectedMonth);
+        const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
         setTransactions(recentTx);
+
+        // Fetch previous month
+        const [year, month] = selectedMonth.split("-").map(Number);
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+        const prevTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, prevMonthString);
+        setPrevTransactions(prevTx);
       }
     } catch (err) {
       console.error(err);
@@ -62,6 +71,23 @@ export default function Dashboard() {
 
   const budgetRemaining = (myBudget || 0) - mySpend;
   const budgetProgress = myBudget ? Math.min((mySpend / myBudget) * 100, 100) : 0;
+
+  // Previous Month metrics
+  const prevExpenseTxs = prevTransactions.filter(tx => tx.transactionType !== "INCOME");
+  const prevTotalSpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  
+  // MoM calculations
+  const spendDiff = prevTotalSpend > 0 ? ((totalSpend - prevTotalSpend) / prevTotalSpend) * 100 : 0;
+  const mySpendDiff = prevMySpend > 0 ? ((mySpend - prevMySpend) / prevMySpend) * 100 : 0;
+
+  // Average Daily Spend
+  const daysInMonth = new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]), 0).getDate();
+  const currentDay = selectedMonth === getISTMonthString() ? new Date().getDate() : daysInMonth;
+  const avgDailySpend = currentDay > 0 ? totalSpend / currentDay : 0;
+
+  // Top 10 Expenses
+  const topExpenses = [...expenseTxs].sort((a, b) => b.amount - a.amount).slice(0, 10);
 
   return (
     <div className="space-y-8">
@@ -94,20 +120,29 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
-          title="My Income"
-          value={`₹${myIncome.toFixed(2)}`}
-          description="Your share of income this month"
-          trend={{ value: mySavings >= 0 ? "Savings" : "Deficit", label: mySavings >= 0 ? "+ Savings" : "- Deficit", isPositive: mySavings >= 0 }}
+          title="Total Household Spend"
+          value={`₹${totalSpend.toFixed(2)}`}
+          description="Total expenses across all members"
+          trend={{ 
+            value: spendDiff !== 0 ? `${Math.abs(spendDiff).toFixed(1)}%` : "0%", 
+            label: spendDiff > 0 ? "vs last month" : "vs last month", 
+            isPositive: spendDiff <= 0 // less spend is positive
+          }}
         />
         <KPICard
           title="My Spend"
           value={`₹${mySpend.toFixed(2)}`}
           description="Your share of expenses"
+          trend={{ 
+            value: mySpendDiff !== 0 ? `${Math.abs(mySpendDiff).toFixed(1)}%` : "0%", 
+            label: mySpendDiff > 0 ? "vs last month" : "vs last month", 
+            isPositive: mySpendDiff <= 0 
+          }}
         />
         <KPICard
-          title="Total Household Spend"
-          value={`₹${totalSpend.toFixed(2)}`}
-          description="Total expenses across all members"
+          title="Average Daily Spend"
+          value={`₹${avgDailySpend.toFixed(2)}`}
+          description={`Based on ${currentDay} days`}
         />
         <KPICard
           title="Budget Remaining"
@@ -117,36 +152,79 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Recent Transactions</h2>
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6">
-            {transactions.length === 0 ? (
-              <EmptyState
-                title="No expenses yet"
-                description={`You haven't recorded any expenses for ${selectedMonth}.`}
-                actionLabel="Add your first expense"
-                onAction={() => setIsModalOpen(true)}
-              />
-            ) : (
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {transactions.map((tx) => (
-                  <div 
-                    key={tx.id} 
-                    className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-muted/30 p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
-                    onClick={() => setSelectedTx(tx)}
-                  >
-                    <div>
-                      <p className="font-medium">{tx.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {tx.category} • {new Date(tx.createdAt).toLocaleDateString()}
-                      </p>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Recent Transactions</h2>
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div className="p-6">
+              {transactions.length === 0 ? (
+                <EmptyState
+                  title="No expenses yet"
+                  description={`You haven't recorded any expenses for ${selectedMonth}.`}
+                  actionLabel="Add your first expense"
+                  onAction={() => setIsModalOpen(true)}
+                />
+              ) : (
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {transactions.slice(0, 50).map((tx) => (
+                    <div 
+                      key={tx.id} 
+                      className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-muted/30 p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
+                      onClick={() => setSelectedTx(tx)}
+                    >
+                      <div>
+                        <p className="font-medium">{tx.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {tx.category} • {new Date(tx.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="font-semibold text-right">
+                        <div className={tx.transactionType === "INCOME" ? "text-emerald-600 dark:text-emerald-400" : ""}>
+                          {tx.transactionType === "INCOME" ? "+" : ""}₹{tx.amount.toFixed(2)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="font-semibold">₹{tx.amount.toFixed(2)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Top 10 Expenses</h2>
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div className="p-6">
+              {topExpenses.length === 0 ? (
+                <EmptyState
+                  title="No expenses yet"
+                  description={`No high-value expenses found for ${selectedMonth}.`}
+                />
+              ) : (
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {topExpenses.map((tx, idx) => (
+                    <div 
+                      key={tx.id} 
+                      className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-muted/30 p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
+                      onClick={() => setSelectedTx(tx)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-muted-foreground font-semibold text-sm">
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium">{tx.description}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {tx.category}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="font-semibold">₹{tx.amount.toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -59,14 +59,14 @@ Checkboxes are the implementation source of progress.
 - [x] Income card
 - [x] Savings card
 - [x] Budget Remaining card
-- [ ] Previous-period comparison
+- [x] Previous-period comparison
 - [ ] Monthly trend
 - [x] Category pie/donut
 - [ ] Payment-method chart
 - [x] Daily/weekly trends
-- [ ] Top 10 expenses
+- [x] Top 10 expenses
 - [ ] Highest spending day
-- [ ] Average daily spend
+- [x] Average daily spend
 
 ## Phase 5 — Budgets & income
 - [x] Household monthly budgets
