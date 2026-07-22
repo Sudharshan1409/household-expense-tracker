@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Settings, Users, Edit3, Trash2, Shield, User } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole } from "@/actions/household";
+import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole, updateMemberName } from "@/actions/household";
+import { CategoriesManager } from "@/components/settings/categories-manager";
 
 interface ManageHouseholdModalProps {
   isOpen: boolean;
@@ -21,6 +22,9 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
   const [isLoading, setIsLoading] = useState(false);
   const [isBudgetLoading, setIsBudgetLoading] = useState(false);
   const [isFetchingMembers, setIsFetchingMembers] = useState(false);
+  
+  const [userName, setUserName] = useState("");
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isOwner = household?.role === "OWNER";
 
@@ -37,9 +41,17 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
+      const payloadBase64 = token?.split('.')[1];
+      let currentUserId = "";
+      if (payloadBase64) {
+        currentUserId = JSON.parse(atob(payloadBase64)).sub;
+      }
+      
       if (token) {
         const data = await getHouseholdMembers(token, household.householdId);
         setMembers(data);
+        const me = data.find((m: any) => m.userId === currentUserId);
+        if (me?.userName) setUserName(me.userName);
       }
     } catch (error) {
       console.error(error);
@@ -86,6 +98,26 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       alert("Failed to save personal budget");
     } finally {
       setIsBudgetLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userName.trim()) return;
+    setIsProfileLoading(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (token) {
+        await updateMemberName(token, household.householdId, userName);
+        alert("Display name updated!");
+        fetchMembers();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update name");
+    } finally {
+      setIsProfileLoading(false);
     }
   };
 
@@ -205,6 +237,44 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                   </Button>
                 </div>
               </form>
+
+              <hr />
+
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Display Name</label>
+                  <input
+                    type="text"
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    placeholder="Enter your name"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    disabled={isProfileLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This is how other members of this household will see you.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Button type="submit" variant="secondary" disabled={isProfileLoading || !userName}>
+                    {isProfileLoading ? "Saving..." : "Save Display Name"}
+                  </Button>
+                </div>
+              </form>
+
+              <hr />
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    Custom Categories
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">Manage shared categories for this household.</p>
+                </div>
+                <CategoriesManager />
+              </div>
             </div>
           )}
 

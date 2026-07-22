@@ -40,13 +40,6 @@ export function BottomNav() {
         <Home className="h-5 w-5" />
         <span className="text-[10px] font-medium">Households</span>
       </Link>
-      <Link
-        href="/settings"
-        className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary"
-      >
-        <Settings className="h-5 w-5" />
-        <span className="text-[10px] font-medium">Settings</span>
-      </Link>
     </nav>
   );
 }
