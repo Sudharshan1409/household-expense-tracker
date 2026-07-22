@@ -22,6 +22,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Other");
+  const [isDateFocused, setIsDateFocused] = useState(false);
   const [date, setDate] = useState(() => {
     const d = new Date();
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
@@ -240,10 +241,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
                   <input
-                    type="date"
+                    type={isDateFocused ? "date" : "text"}
                     required
+                    onFocus={() => setIsDateFocused(true)}
+                    onBlur={() => setIsDateFocused(false)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    value={date}
+                    value={isDateFocused ? date : (date ? format(new Date(date), "dd/MM/yyyy") : "")}
                     onChange={(e) => setDate(e.target.value)}
                     disabled={isLoading}
                   />
