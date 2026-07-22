@@ -13,7 +13,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-muted/40">
-      <div className="flex h-14 items-center border-b px-6 font-semibold tracking-tight">
+      <div className="flex h-14 items-center gap-2 border-b px-6 font-semibold tracking-tight">
+        <img src="/logo.jpg" alt="Logo" className="w-6 h-6 rounded border border-border/50" />
         Household Tracker
       </div>
       <nav className="flex-1 overflow-y-auto py-4">
