@@ -26,6 +26,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getTemplates, deleteTemplate } from "@/actions/recurring";
+import { addHouseholdTag } from "@/actions/household";
 import { createTransaction } from "@/actions/transaction";
 import { TemplateModal } from "@/components/recurring/recurring-modal";
 import { toast } from "sonner";
@@ -78,6 +79,14 @@ export default function RecurringPage() {
         paidBy: currentUserId,
         tags: template.tags || []
       });
+
+      const existingHouseholdTags = activeHousehold?.metadata?.tags || [];
+      const tagsToAddToHousehold = (template.tags || []).filter((t: string) => !existingHouseholdTags.includes(t));
+      
+      for (const tag of tagsToAddToHousehold) {
+        await addHouseholdTag(token, activeHousehold.householdId, tag);
+      }
+
       toast(`Success! Generated transaction for ${template.description}.`);
     } catch (e) {
       console.error(e);
