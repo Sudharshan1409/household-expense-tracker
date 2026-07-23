@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Receipt, SplitSquareHorizontal, Camera } from "lucide-react";
+import { X, Receipt, SplitSquareHorizontal, Camera, Info } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { createTransaction } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
@@ -10,6 +10,7 @@ import { getUploadPresignedUrl } from "@/actions/s3";
 import { useHousehold } from "@/components/providers/household-provider";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -310,7 +311,21 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
               {isShared && (
                 <div className="p-4 border-t bg-background space-y-4 animate-in slide-in-from-top-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-muted-foreground">Split Method</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold uppercase text-muted-foreground">Split Method</label>
+                      <Tooltip>
+                        <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground">
+                          <Info className="h-3.5 w-3.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="w-[200px] text-sm">
+                            <strong>Equally:</strong> Divided evenly among members.<br/>
+                            <strong>Percentage:</strong> You define the % each person pays.<br/>
+                            <strong>Exact:</strong> You define the exact ₹ amount each person pays.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <div className="flex gap-2">
                       {["EQUAL", "PERCENTAGE", "EXACT"].map((type) => (
                         <Button

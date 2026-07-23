@@ -9,7 +9,8 @@ interface Household {
   householdId: string;
   name: string;
   role: string;
-  monthlyBudget: number;
+  monthlyBudget: number; // Member's budget
+  overallBudget: number; // Household's budget
   categories: string[];
   inviteCode: string;
 }
@@ -52,6 +53,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
             role: m.role,
             name: meta?.name || "Unknown Household",
             monthlyBudget: m.budget || 50000,
+            overallBudget: meta?.monthlyBudget || 50000,
             categories: meta?.categories || ["Groceries", "Utilities", "Rent", "Dining Out", "Transportation", "Travel", "Entertainment", "Healthcare", "Shopping", "Maintenance", "Subscriptions", "Other"],
             inviteCode: meta?.inviteCode || "UNKNOWN",
           };

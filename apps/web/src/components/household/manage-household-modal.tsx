@@ -71,7 +71,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       const token = session.tokens?.idToken?.toString();
       if (token) {
         // We leave the household-level budget alone for backward compatibility
-        await updateHouseholdSettings(token, household.householdId, { name, monthlyBudget: 50000 });
+        await updateHouseholdSettings(token, household.householdId, { name, monthlyBudget: budget });
         onSuccess();
         toast("Household renamed successfully.");
       }

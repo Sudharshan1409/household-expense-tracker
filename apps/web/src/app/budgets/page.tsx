@@ -5,11 +5,12 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
-import { Wallet, Target, AlertTriangle } from "lucide-react";
+import { Wallet, Target, AlertTriangle, Info, Edit2 } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
-import { getHouseholdMembers, updateCategoryBudgets } from "@/actions/household";
+import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings } from "@/actions/household";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CATEGORIES = [
   "Groceries", "Utilities", "Rent", "Dining Out", "Transportation", 
@@ -18,12 +19,16 @@ const CATEGORIES = [
 ];
 
 export default function BudgetsPage() {
-  const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
+  const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Overall Budget State
+  const [isEditingOverall, setIsEditingOverall] = useState(false);
+  const [overallBudget, setOverallBudget] = useState("");
 
   const getISTMonthString = () => {
     const now = new Date();
@@ -41,6 +46,9 @@ export default function BudgetsPage() {
         const session = await fetchAuthSession();
         const token = session.tokens?.idToken?.toString();
         if (token) {
+          // Set overall budget from context
+          setOverallBudget(activeHousehold.overallBudget?.toString() || "50000");
+
           // Fetch transactions for actuals
           const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
           setTransactions(recentTx);
@@ -61,7 +69,34 @@ export default function BudgetsPage() {
       }
     }
     loadData();
-  }, [activeHousehold?.householdId, currentUserId, selectedMonth]);
+  }, [activeHousehold?.householdId, activeHousehold?.overallBudget, currentUserId, selectedMonth]);
+
+  const handleSaveOverallBudget = async () => {
+    if (!activeHousehold?.householdId) return;
+    setIsSaving(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) throw new Error("No token");
+
+      const numBudget = parseFloat(overallBudget);
+      if (isNaN(numBudget) || numBudget < 0) throw new Error("Invalid budget");
+
+      await updateHouseholdSettings(token, activeHousehold.householdId, { 
+        name: activeHousehold.name, 
+        monthlyBudget: numBudget 
+      });
+      
+      toast.success("Household budget updated");
+      setIsEditingOverall(false);
+      refreshHouseholds();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update household budget");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveBudgets = async () => {
     if (!activeHousehold?.householdId) return;
@@ -80,9 +115,10 @@ export default function BudgetsPage() {
       await updateCategoryBudgets(token, activeHousehold.householdId, cleaned);
       setCategoryBudgets(cleaned);
       setIsEditing(false);
+      toast.success("Category budgets saved");
     } catch (err) {
       console.error(err);
-      toast("Failed to save budgets");
+      toast.error("Failed to save budgets");
     } finally {
       setIsSaving(false);
     }
@@ -107,13 +143,18 @@ export default function BudgetsPage() {
     return acc;
   }, {} as Record<string, number>);
 
+  const totalMySpend = Object.values(actualsMap).reduce((a: number, b: any) => a + (b as number), 0);
+  const totalHouseholdSpend = transactions.reduce((a: number, b: any) => a + (b.amount || 0), 0);
+  const overallBudgetNum = parseFloat(overallBudget) || 0;
+  const overallProgress = overallBudgetNum > 0 ? Math.min((totalHouseholdSpend / overallBudgetNum) * 100, 100) : 0;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
           <p className="text-muted-foreground">
-            Set category limits and track your spending.
+            Set household limits and track your spending.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -131,11 +172,78 @@ export default function BudgetsPage() {
         />
       </div>
 
+      {/* Overall Household Budget Card */}
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+        
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold tracking-tight">Overall Household Budget</h2>
+              <Tooltip>
+                <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
+                <Info className="h-4 w-4" />
+              </TooltipTrigger>
+                <TooltipContent>
+                  <p className="w-[200px] text-sm">This is the combined monthly spending limit for everyone in the household.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            
+            {isEditingOverall ? (
+              <div className="flex items-center gap-3 pt-2">
+                <div className="relative w-48">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                  <input
+                    type="number"
+                    value={overallBudget}
+                    onChange={(e) => setOverallBudget(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                </div>
+                <Button size="sm" onClick={handleSaveOverallBudget} disabled={isSaving}>Save</Button>
+                <Button variant="ghost" size="sm" onClick={() => setIsEditingOverall(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-3 pt-1">
+                <span className="text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
+                <span className="text-muted-foreground font-medium">monthly limit</span>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          <div className="md:w-1/3 space-y-3">
+            <div className="flex justify-between text-sm font-medium">
+              <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
+              <span className="text-muted-foreground">{overallProgress.toFixed(0)}%</span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+              <div 
+                className={`h-full transition-all duration-1000 ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
+                style={{ width: `${Math.min(overallProgress, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Budgets Card */}
       <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-6">
         <div className="flex items-center justify-between border-b pb-4">
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold tracking-tight">Category Budgets</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Your Category Budgets</h2>
+            <Tooltip>
+              <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
+                <Info className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="w-[200px] text-sm">These limits apply only to your personal share of expenses. They help you track your own spending inside the household.</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           {isEditing ? (
             <div className="flex gap-2">

@@ -7,6 +7,7 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({ subsets: ["latin"], preload: false });
 
@@ -33,29 +34,31 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased bg-background`}>
-        <AmplifyProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthGuard>
-              <HouseholdProvider>
-                <div className="flex min-h-screen flex-col md:flex-row">
-                  <Sidebar />
-                  <main className="flex-1 pb-16 md:pb-0 overflow-y-auto">
-                    <div className="container mx-auto p-4 md:p-8 max-w-6xl">
-                      {children}
-                    </div>
-                  </main>
-                  <BottomNav />
-                </div>
-              </HouseholdProvider>
-            </AuthGuard>
-          </ThemeProvider>
-        </AmplifyProvider>
-        <Toaster position="top-center" closeButton />
+        <TooltipProvider>
+          <AmplifyProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <AuthGuard>
+                <HouseholdProvider>
+                  <div className="flex min-h-screen flex-col md:flex-row">
+                    <Sidebar />
+                    <main className="flex-1 pb-16 md:pb-0 overflow-y-auto">
+                      <div className="container mx-auto p-4 md:p-8 max-w-6xl">
+                        {children}
+                      </div>
+                    </main>
+                    <BottomNav />
+                  </div>
+                </HouseholdProvider>
+              </AuthGuard>
+            </ThemeProvider>
+          </AmplifyProvider>
+          <Toaster position="top-center" closeButton />
+        </TooltipProvider>
       </body>
     </html>
   );
