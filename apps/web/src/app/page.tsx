@@ -284,6 +284,10 @@ export default function Dashboard() {
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
             onDelete={loadTransactions}
+            onUpdate={(updatedTx) => {
+              setSelectedTx(updatedTx);
+              setTransactions(prev => prev.map(t => t.id === updatedTx.id ? updatedTx : t));
+            }}
           />
           <ManageHouseholdModal
             isOpen={isManageModalOpen}

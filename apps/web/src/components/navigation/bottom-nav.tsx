@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, PieChart, Settings, Wallet, LineChart, MoreHorizontal, Repeat, Users } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, LineChart, MoreHorizontal, Repeat, Users, Hash } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
@@ -57,6 +57,15 @@ export function BottomNav() {
             >
               <PieChart className="h-5 w-5" />
               <span className="font-medium">Reports</span>
+            </Link>
+
+            <Link
+              href="/tags"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg p-3 text-muted-foreground transition-all hover:bg-muted hover:text-primary border"
+            >
+              <Hash className="h-5 w-5" />
+              <span className="font-medium">Tags</span>
             </Link>
             
             <Link

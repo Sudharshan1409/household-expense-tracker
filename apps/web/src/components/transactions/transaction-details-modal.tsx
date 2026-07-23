@@ -30,9 +30,10 @@ interface TransactionDetailsModalProps {
   transaction: any;
   householdId: string;
   onDelete?: () => void;
+  onUpdate?: (updatedTx: any) => void;
 }
 
-export function TransactionDetailsModal({ isOpen, onClose, transaction, householdId, onDelete }: TransactionDetailsModalProps) {
+export function TransactionDetailsModal({ isOpen, onClose, transaction, householdId, onDelete, onUpdate }: TransactionDetailsModalProps) {
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -68,7 +69,11 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       await updateTransactionTags(token, householdId, transaction.SK, tags);
       setIsEditingTags(false);
       toast("Tags updated successfully");
-      if (onDelete) onDelete(); // Reusing the onDelete callback to trigger a refresh in the parent if needed.
+      if (onUpdate) {
+        onUpdate({ ...transaction, tags });
+      } else if (onDelete) {
+        onDelete();
+      }
     } catch (e) {
       toast("Failed to update tags");
     }
@@ -198,7 +203,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
             {!isEditingTags ? (
               <div className="flex flex-wrap gap-2">
                 {tags.length > 0 ? tags.map(tag => (
-                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                  <Badge key={tag} variant="secondary">#{tag}</Badge>
                 )) : <span className="text-xs text-muted-foreground">No tags</span>}
               </div>
             ) : (
@@ -206,11 +211,18 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1">
-                      {tag}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                        onClick={() => setTags(tags.filter((t) => t !== tag))}
-                      />
+                      #{tag}
+                      <button 
+                        type="button"
+                        className="flex items-center justify-center rounded-full hover:bg-muted p-0.5 transition-colors focus:outline-none"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTags(tags.filter((t) => t !== tag));
+                        }}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
                     </Badge>
                   ))}
                 </div>
@@ -223,8 +235,9 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && tagInput.trim()) {
                         e.preventDefault();
-                        if (!tags.includes(tagInput.trim())) {
-                          setTags([...tags, tagInput.trim()]);
+                        const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                        if (!tags.includes(normalizedTag)) {
+                          setTags([...tags, normalizedTag]);
                         }
                         setTagInput("");
                       }
@@ -236,8 +249,12 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-                        setTags([...tags, tagInput.trim()]);
+                      if (tagInput.trim()) {
+                        const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                        if (!tags.includes(normalizedTag)) {
+                          setTags([...tags, normalizedTag]);
+                        }
+                        setTagInput("");
                       }
                       setTagInput("");
                     }}
@@ -259,7 +276,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                           className="cursor-pointer hover:bg-muted text-xs font-normal"
                           onClick={() => setTags([...tags, t])}
                         >
-                          + {t}
+                          + #{t}
                         </Badge>
                     ))}
                   </div>

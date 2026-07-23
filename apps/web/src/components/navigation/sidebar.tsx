@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart, Hash } from "lucide-react";
 import { UserMenu } from "@/components/auth/user-menu";
 
 export function Sidebar() {
@@ -35,6 +35,19 @@ export function Sidebar() {
             >
               <List className="h-4 w-4" />
               Transactions
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/tags"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all ${
+                pathname === "/tags" 
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" 
+                  : "text-muted-foreground hover:text-primary hover:bg-muted"
+              }`}
+            >
+              <Hash className="h-4 w-4" />
+              Tags
             </Link>
           </li>
           <li>

@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, DeleteCommand, GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 
 export async function createTransaction(
   idToken: string,
@@ -47,28 +47,52 @@ export async function createTransaction(
     finalSplits = data.splits;
   }
 
-  await db.send(
-    new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        PK: `HOUSEHOLD#${householdId}`,
-        SK: `TRANSACTION#${data.date || now}#${transactionId}`,
-        id: transactionId,
-        householdId,
-        createdBy: user.userId,
-        paidBy: data.paidBy || user.userId,
-        amount: data.amount,
-        description: data.description,
-        category: data.category,
-        isShared: data.isShared,
-        splitType: data.isShared ? data.splitType : "NONE",
-        splits: finalSplits,
-        date: data.date,
-        transactionType: data.transactionType || "EXPENSE",
-        receiptUrl: data.receiptUrl,
-        tags: data.tags || [],
-        createdAt: now,
+  const transactionItem = {
+    PK: `HOUSEHOLD#${householdId}`,
+    SK: `TRANSACTION#${data.date || now}#${transactionId}`,
+    id: transactionId,
+    householdId,
+    createdBy: user.userId,
+    paidBy: data.paidBy || user.userId,
+    amount: data.amount,
+    description: data.description,
+    category: data.category,
+    isShared: data.isShared,
+    splitType: data.isShared ? data.splitType : "NONE",
+    splits: finalSplits,
+    date: data.date,
+    transactionType: data.transactionType || "EXPENSE",
+    receiptUrl: data.receiptUrl,
+    tags: data.tags || [],
+    createdAt: now,
+  };
+
+  const transactItems: any[] = [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: transactionItem,
       },
+    },
+  ];
+
+  if (data.tags && data.tags.length > 0) {
+    for (const tag of data.tags) {
+      transactItems.push({
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...transactionItem,
+            PK: `HOUSEHOLD#${householdId}#TAG#${tag}`,
+          },
+        },
+      });
+    }
+  }
+
+  await db.send(
+    new TransactWriteCommand({
+      TransactItems: transactItems,
     })
   );
 
@@ -147,16 +171,50 @@ export async function getRecentTransactions(idToken: string, householdId: string
 
 export async function deleteTransaction(idToken: string, householdId: string, sk: string) {
   const user = await verifyToken(idToken);
-  // Optional: Verify user's role in the household to allow deletion.
-  // For simplicity, we allow any member to delete, or we can check if they created it.
   
-  await db.send(
-    new DeleteCommand({
+  // First fetch the transaction to get its tags
+  const existingCommand = new GetCommand({
+    TableName: TABLE_NAME,
+    Key: {
+      PK: `HOUSEHOLD#${householdId}`,
+      SK: sk,
+    },
+  });
+  
+  const existing = await db.send(existingCommand);
+  if (!existing.Item) return true; // Already deleted
+  
+  const tags: string[] = existing.Item.tags || [];
+  
+  const transactItems: any[] = [];
+  
+  // Delete main item
+  transactItems.push({
+    Delete: {
       TableName: TABLE_NAME,
       Key: {
         PK: `HOUSEHOLD#${householdId}`,
         SK: sk,
       },
+    },
+  });
+  
+  // Delete tag items
+  for (const tag of tags) {
+    transactItems.push({
+      Delete: {
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `HOUSEHOLD#${householdId}#TAG#${tag}`,
+          SK: sk,
+        },
+      },
+    });
+  }
+  
+  await db.send(
+    new TransactWriteCommand({
+      TransactItems: transactItems,
     })
   );
   
@@ -208,20 +266,59 @@ export async function updateTransactionTags(idToken: string, householdId: string
   const existing = await db.send(existingCommand);
   if (!existing.Item) throw new Error("Transaction not found");
   
-  const command = new PutCommand({
-    TableName: TABLE_NAME,
-    Item: {
-      ...existing.Item,
-      tags,
+  const oldTags: string[] = existing.Item.tags || [];
+  const transactItems: any[] = [];
+  
+  // Update main item
+  const updatedItem = {
+    ...existing.Item,
+    tags,
+  };
+  transactItems.push({
+    Put: {
+      TableName: TABLE_NAME,
+      Item: updatedItem,
     },
   });
-  await db.send(command);
+
+  // Delete old tag mappings that are no longer present
+  const tagsToRemove = oldTags.filter((t) => !tags.includes(t));
+  for (const tag of tagsToRemove) {
+    transactItems.push({
+      Delete: {
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `HOUSEHOLD#${householdId}#TAG#${tag}`,
+          SK: sk,
+        },
+      },
+    });
+  }
+
+  // Add/Update new tag mappings
+  for (const tag of tags) {
+    transactItems.push({
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          ...updatedItem,
+          PK: `HOUSEHOLD#${householdId}#TAG#${tag}`,
+        }
+      }
+    });
+  }
+  
+  await db.send(
+    new TransactWriteCommand({
+      TransactItems: transactItems,
+    })
+  );
+  
   return true;
 }
 
-export async function removeTagFromHouseholdTransactions(idToken: string, householdId: string, tagToRemove: string) {
-  const user = await verifyToken(idToken);
-  
+export async function getTransactionsByTag(idToken: string, householdId: string, tag: string) {
+  await verifyToken(idToken);
   let items: any[] = [];
   let lastEvaluatedKey: any = undefined;
 
@@ -230,9 +327,10 @@ export async function removeTagFromHouseholdTransactions(idToken: string, househ
       TableName: TABLE_NAME,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
       ExpressionAttributeValues: {
-        ":pk": `HOUSEHOLD#${householdId}`,
+        ":pk": `HOUSEHOLD#${householdId}#TAG#${tag}`,
         ":skPrefix": `TRANSACTION#`,
       },
+      ScanIndexForward: false,
       ExclusiveStartKey: lastEvaluatedKey,
     });
 
@@ -240,21 +338,21 @@ export async function removeTagFromHouseholdTransactions(idToken: string, househ
     items = items.concat(response.Items || []);
     lastEvaluatedKey = response.LastEvaluatedKey;
   } while (lastEvaluatedKey);
+
+  return items;
+}
+
+export async function removeTagFromHouseholdTransactions(idToken: string, householdId: string, tagToRemove: string) {
+  const user = await verifyToken(idToken);
   
-  const txToUpdate = items.filter(tx => tx.tags && tx.tags.includes(tagToRemove));
+  const txToUpdate = await getTransactionsByTag(idToken, householdId, tagToRemove);
   
   for (const tx of txToUpdate) {
     const newTags = tx.tags.filter((t: string) => t !== tagToRemove);
-    await db.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...tx,
-          tags: newTags,
-        },
-      })
-    );
+    await updateTransactionTags(idToken, householdId, tx.SK, newTags);
   }
+  
+
   
   return true;
 }

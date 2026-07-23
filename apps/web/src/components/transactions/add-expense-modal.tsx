@@ -292,11 +292,18 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 <div className="flex flex-wrap gap-2 mb-2">
                   {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1">
-                      {tag}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                        onClick={() => setTags(tags.filter((t) => t !== tag))}
-                      />
+                      #{tag}
+                      <button 
+                        type="button"
+                        className="flex items-center justify-center rounded-full hover:bg-muted p-0.5 transition-colors focus:outline-none"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTags(tags.filter((t) => t !== tag));
+                        }}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
                     </Badge>
                   ))}
                 </div>
@@ -310,8 +317,9 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && tagInput.trim()) {
                       e.preventDefault();
-                      if (!tags.includes(tagInput.trim())) {
-                        setTags([...tags, tagInput.trim()]);
+                      const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                      if (!tags.includes(normalizedTag)) {
+                        setTags([...tags, normalizedTag]);
                       }
                       setTagInput("");
                     }
@@ -323,8 +331,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-                      setTags([...tags, tagInput.trim()]);
+                    if (tagInput.trim()) {
+                      const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                      if (!tags.includes(normalizedTag)) {
+                        setTags([...tags, normalizedTag]);
+                      }
+                      setTagInput("");
                     }
                     setTagInput("");
                   }}
@@ -346,7 +358,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                         className="cursor-pointer hover:bg-muted text-xs font-normal"
                         onClick={() => setTags([...tags, t])}
                       >
-                        + {t}
+                        + #{t}
                       </Badge>
                   ))}
                 </div>
