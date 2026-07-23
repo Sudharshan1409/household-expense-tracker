@@ -258,7 +258,7 @@ export default function TagsPage() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           transaction={selectedTx}
-          householdId={activeHousehold?.householdId!}
+          householdId={activeHousehold?.householdId || ""}
           onDelete={() => {
             setTransactions(prev => prev.filter(t => t.id !== selectedTx.id));
             setIsModalOpen(false);
