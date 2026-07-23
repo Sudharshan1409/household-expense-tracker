@@ -31,6 +31,7 @@ export async function createTemplate(
     isShared?: boolean;
     splitType?: string;
     splits?: Record<string, number>;
+    tags?: string[];
   }
 ) {
   const user = await verifyToken(idToken);
@@ -52,6 +53,7 @@ export async function createTemplate(
       isShared: data.isShared || false,
       splitType: data.splitType || "NONE",
       splits: data.splits || {},
+      tags: data.tags || [],
       createdAt: now,
     },
   });
@@ -72,6 +74,7 @@ export async function updateTemplate(
     isShared?: boolean;
     splitType?: string;
     splits?: Record<string, number>;
+    tags?: string[];
   }
 ) {
   const user = await verifyToken(idToken);
@@ -91,6 +94,7 @@ export async function updateTemplate(
       isShared: data.isShared || false,
       splitType: data.splitType || "NONE",
       splits: data.splits || {},
+      tags: data.tags || [],
       updatedAt: new Date().toISOString(),
     },
   });

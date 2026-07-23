@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { createTemplate, updateTemplate } from "@/actions/recurring";
-import { getHouseholdMembers } from "@/actions/household";
+import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { SplitSquareHorizontal, X, Info } from "lucide-react";
+import { SplitSquareHorizontal, X, Info, Hash } from "lucide-react";
 import { toast } from "sonner";
 import { useHousehold } from "@/components/providers/household-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface TemplateModalProps {
   isOpen: boolean;
@@ -29,6 +30,9 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
   const [splitType, setSplitType] = useState<"EQUAL" | "PERCENTAGE" | "EXACT">("EQUAL");
   const [members, setMembers] = useState<any[]>([]);
   const [splits, setSplits] = useState<Record<string, number>>({});
+  
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,6 +66,8 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         setIsShared(existingTemplate.isShared || false);
         setSplitType(existingTemplate.splitType || "EQUAL");
         setSplits(existingTemplate.splits || {});
+        setTags(existingTemplate.tags || []);
+        setTagInput("");
       } else {
         setDescription("");
         setAmount("");
@@ -70,6 +76,8 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         setIsShared(false);
         setSplitType("EQUAL");
         setSplits({});
+        setTags([]);
+        setTagInput("");
       }
     }
   }, [isOpen, existingTemplate, householdId]);
@@ -117,8 +125,16 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         transactionType,
         isShared: transactionType === "EXPENSE" ? isShared : false,
         splitType: (transactionType === "EXPENSE" && isShared) ? splitType : "NONE",
-        splits: (transactionType === "EXPENSE" && isShared) ? splits : {}
+        splits: (transactionType === "EXPENSE" && isShared) ? splits : {},
+        tags
       };
+
+      const existingHouseholdTags = activeHousehold?.metadata?.tags || [];
+      const tagsToAddToHousehold = tags.filter(t => !existingHouseholdTags.includes(t));
+      
+      for (const tag of tagsToAddToHousehold) {
+        await addHouseholdTag(token, householdId, tag);
+      }
 
       if (existingTemplate) {
         await updateTemplate(token, householdId, existingTemplate.id, data);
@@ -213,6 +229,87 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
               </select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Tags</label>
+            <div className="flex flex-col gap-2">
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1">
+                      #{tag}
+                      <button 
+                        type="button"
+                        className="flex items-center justify-center rounded-full hover:bg-muted p-0.5 transition-colors focus:outline-none"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTags(tags.filter((t) => t !== tag));
+                        }}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && tagInput.trim()) {
+                        e.preventDefault();
+                        const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                        if (!tags.includes(normalizedTag)) {
+                          setTags([...tags, normalizedTag]);
+                        }
+                        setTagInput("");
+                      }
+                    }}
+                    className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    placeholder="Add a tag..."
+                  />
+                </div>
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (tagInput.trim()) {
+                      const normalizedTag = tagInput.trim().startsWith('#') ? tagInput.trim().substring(1) : tagInput.trim();
+                      if (!tags.includes(normalizedTag)) {
+                        setTags([...tags, normalizedTag]);
+                      }
+                      setTagInput("");
+                    }
+                    setTagInput("");
+                  }}
+                  disabled={!tagInput.trim()}
+                >
+                  Add
+                </Button>
+              </div>
+              {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.filter(t => !tags.includes(t)).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {activeHousehold.metadata.tags
+                    .filter(t => !tags.includes(t))
+                    .map(t => (
+                      <Badge 
+                        key={t} 
+                        variant="outline" 
+                        className="cursor-pointer hover:bg-muted text-xs font-normal"
+                        onClick={() => setTags([...tags, t])}
+                      >
+                        + #{t}
+                      </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {transactionType === "EXPENSE" && (
             <div className="border rounded-xl overflow-hidden mt-4">
