@@ -12,12 +12,6 @@ import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings } f
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const CATEGORIES = [
-  "Groceries", "Utilities", "Rent", "Dining Out", "Transportation", 
-  "Travel", "Entertainment", "Healthcare", "Shopping", "Maintenance", 
-  "Subscriptions", "Other"
-];
-
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -265,7 +259,7 @@ export default function BudgetsPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {CATEGORIES.map(cat => {
+            {(activeHousehold?.categories || []).map((cat: string) => {
               const actual = actualsMap[cat] || 0;
               const budget = categoryBudgets[cat] || 0;
               const hasBudget = budget > 0;
