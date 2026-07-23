@@ -51,11 +51,11 @@ export default function RecurringPage() {
       await createTransaction(token, activeHousehold.householdId, {
         amount: template.amount,
         description: template.description,
-        category: template.category,
+        category: template.transactionType === "INCOME" ? "Income" : template.category,
         transactionType: template.transactionType || "EXPENSE",
-        isShared: false,
-        splitType: "NONE",
-        splits: { [currentUserId]: template.amount },
+        isShared: template.isShared || false,
+        splitType: template.isShared ? (template.splitType || "NONE") : "NONE",
+        splits: template.isShared ? (template.splits || {}) : { [currentUserId]: template.amount },
         date: new Date().toISOString(),
         paidBy: currentUserId
       });

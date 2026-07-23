@@ -28,6 +28,9 @@ export async function createTemplate(
     description: string;
     category: string;
     transactionType: "EXPENSE" | "INCOME";
+    isShared?: boolean;
+    splitType?: string;
+    splits?: Record<string, number>;
   }
 ) {
   const user = await verifyToken(idToken);
@@ -46,6 +49,9 @@ export async function createTemplate(
       description: data.description,
       category: data.category,
       transactionType: data.transactionType,
+      isShared: data.isShared || false,
+      splitType: data.splitType || "NONE",
+      splits: data.splits || {},
       createdAt: now,
     },
   });
@@ -63,6 +69,9 @@ export async function updateTemplate(
     description: string;
     category: string;
     transactionType: "EXPENSE" | "INCOME";
+    isShared?: boolean;
+    splitType?: string;
+    splits?: Record<string, number>;
   }
 ) {
   const user = await verifyToken(idToken);
@@ -79,6 +88,9 @@ export async function updateTemplate(
       description: data.description,
       category: data.category,
       transactionType: data.transactionType,
+      isShared: data.isShared || false,
+      splitType: data.splitType || "NONE",
+      splits: data.splits || {},
       updatedAt: new Date().toISOString(),
     },
   });
