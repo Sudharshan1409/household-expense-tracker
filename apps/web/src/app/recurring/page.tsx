@@ -124,19 +124,19 @@ export default function RecurringPage() {
             />
           ) : (
             templates.map((tpl) => (
-              <div key={tpl.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+              <div key={tpl.id} className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-muted rounded-full">
+                  <div className="p-3 bg-muted rounded-full shrink-0">
                     <Repeat className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{tpl.description}</h3>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate">{tpl.description}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
                       ₹{tpl.amount} • {tpl.category} • <span className={tpl.transactionType === "INCOME" ? "text-emerald-500" : ""}>{tpl.transactionType || "EXPENSE"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end mt-2 sm:mt-0">
                   <Button variant="ghost" size="icon" onClick={() => { setEditingTemplate(tpl); setIsModalOpen(true); }}>
                     <Edit2 className="h-4 w-4" />
                   </Button>

@@ -16,10 +16,10 @@ export function CategoriesManager() {
   const [isLoading, setIsLoading] = useState(false);
 
   if (!activeHousehold) return null;
-  const isOwner = activeHousehold.role === "OWNER";
+  const isOwnerOrAdmin = activeHousehold.role === "OWNER" || activeHousehold.role === "ADMIN";
 
   const handleSave = async (updatedCategories: string[]) => {
-    if (!isOwner) return;
+    if (!isOwnerOrAdmin) return;
     setIsLoading(true);
     try {
       const session = await fetchAuthSession();
@@ -31,7 +31,7 @@ export function CategoriesManager() {
       await refreshHouseholds();
     } catch (e) {
       console.error(e);
-      toast("Failed to update categories. Only Owners can do this.");
+      toast("Failed to update categories. Only Admins and Owners can do this.");
     } finally {
       setIsLoading(false);
     }
@@ -61,10 +61,10 @@ export function CategoriesManager() {
           onChange={(e) => setNewCat(e.target.value)}
           placeholder="New Category Name"
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          disabled={!isOwner || isLoading}
+          disabled={!isOwnerOrAdmin || isLoading}
           onKeyDown={(e) => e.key === "Enter" && addCategory()}
         />
-        <Button onClick={addCategory} disabled={!isOwner || isLoading || !newCat.trim()}>
+        <Button onClick={addCategory} disabled={!isOwnerOrAdmin || isLoading || !newCat.trim()}>
           <Plus className="h-4 w-4 mr-2" />
           Add
         </Button>
@@ -75,7 +75,7 @@ export function CategoriesManager() {
           <div key={cat} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-sm font-medium border">
             <Tag className="h-3 w-3 text-muted-foreground" />
             {cat}
-            {isOwner && (
+            {isOwnerOrAdmin && (
               <button 
                 onClick={() => removeCategory(cat)}
                 disabled={isLoading}
@@ -87,8 +87,8 @@ export function CategoriesManager() {
           </div>
         ))}
       </div>
-      {!isOwner && (
-        <p className="text-xs text-muted-foreground">Only the Household Owner can modify custom categories.</p>
+      {!isOwnerOrAdmin && (
+        <p className="text-xs text-muted-foreground">Only Admins and Owners can modify custom categories.</p>
       )}
     </div>
   );
