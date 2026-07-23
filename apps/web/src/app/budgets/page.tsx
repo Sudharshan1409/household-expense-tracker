@@ -205,10 +205,10 @@ export default function BudgetsPage() {
                 <Button variant="ghost" size="sm" onClick={() => setIsEditingOverall(false)}>Cancel</Button>
               </div>
             ) : (
-              <div className="flex items-baseline gap-3 pt-1">
-                <span className="text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
-                <span className="text-muted-foreground font-medium">monthly limit</span>
-                <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
+              <div className="flex items-baseline gap-2 pt-1">
+                <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
+                <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
                   <Edit2 className="h-4 w-4" />
                 </Button>
               </div>
