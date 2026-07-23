@@ -9,6 +9,17 @@ import { getDownloadPresignedUrl } from "@/actions/s3";
 import { deleteTransaction } from "@/actions/transaction";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
@@ -66,8 +77,6 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this transaction? This cannot be undone.")) return;
-    
     setIsDeleting(true);
     try {
       const session = await fetchAuthSession();
@@ -171,15 +180,27 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
             <Button variant="outline" className="flex-1" onClick={onClose}>
               Close
             </Button>
-            <Button 
-              variant="destructive" 
-              className="flex-1" 
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
-              Delete
-            </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger type="button" className="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2" disabled={isDeleting}>
+                {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Delete
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete this transaction from the household.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, delete it
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

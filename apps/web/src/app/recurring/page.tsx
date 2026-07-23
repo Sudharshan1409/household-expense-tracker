@@ -6,6 +6,17 @@ import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Repeat, Plus, Play, Trash2, Edit2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getTemplates, deleteTemplate } from "@/actions/recurring";
@@ -67,7 +78,7 @@ export default function RecurringPage() {
   };
 
   const handleDelete = async (templateId: string) => {
-    if (!activeHousehold?.householdId || !confirm("Delete this template?")) return;
+    if (!activeHousehold?.householdId) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
@@ -129,9 +140,26 @@ export default function RecurringPage() {
                   <Button variant="ghost" size="icon" onClick={() => { setEditingTemplate(tpl); setIsModalOpen(true); }}>
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(tpl.id)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10">
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will delete this recurring template. Future transactions will not be automatically generated.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(tpl.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete Template
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <Button variant="outline" size="sm" onClick={() => handlePostNow(tpl)}>
                     <Play className="mr-2 h-4 w-4" />
                     Post Now
