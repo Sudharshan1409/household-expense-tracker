@@ -13,6 +13,7 @@ interface Household {
   overallBudget: number; // Household's budget
   categories: string[];
   inviteCode: string;
+  metadata?: any;
 }
 
 interface HouseholdContextType {
@@ -56,6 +57,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
             overallBudget: meta?.monthlyBudget || 50000,
             categories: meta?.categories || ["Groceries", "Utilities", "Rent", "Dining Out", "Transportation", "Travel", "Entertainment", "Healthcare", "Shopping", "Maintenance", "Subscriptions", "Other"],
             inviteCode: meta?.inviteCode || "UNKNOWN",
+            metadata: meta,
           };
         })
       );

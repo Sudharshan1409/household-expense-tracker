@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { X, Receipt, SplitSquareHorizontal, Camera, Info } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { createTransaction } from "@/actions/transaction";
-import { getHouseholdMembers } from "@/actions/household";
+import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
+import { Badge } from "@/components/ui/badge";
 import { getUploadPresignedUrl } from "@/actions/s3";
 import { useHousehold } from "@/components/providers/household-provider";
 import { format } from "date-fns";
@@ -37,6 +38,8 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [splits, setSplits] = useState<Record<string, number>>({});
   const [transactionType, setTransactionType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,6 +77,8 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setSplitType("EQUAL");
       setPaidBy(currentUserId || "");
       setError("");
+      setTags([]);
+      setTagInput("");
     }
   }, [isOpen, currentUserId]);
 
@@ -138,6 +143,13 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         }
       }
 
+      // Add any new tags to the household metadata
+      for (const tag of tags) {
+        if (!activeHousehold?.metadata?.tags?.includes(tag)) {
+          await addHouseholdTag(token, householdId, tag);
+        }
+      }
+
       await createTransaction(token, householdId, {
         amount: Number(amount),
         description,
@@ -149,6 +161,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         transactionType,
         paidBy,
         receiptUrl: finalReceiptUrl,
+        tags,
       });
 
       onSuccess();
@@ -270,6 +283,74 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Tags Input */}
+            <div className="space-y-2 mt-4">
+              <label className="text-sm font-medium">Tags / Events</label>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1">
+                      {tag}
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                        onClick={() => setTags(tags.filter((t) => t !== tag))}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. #Goa2026"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && tagInput.trim()) {
+                      e.preventDefault();
+                      if (!tags.includes(tagInput.trim())) {
+                        setTags([...tags, tagInput.trim()]);
+                      }
+                      setTagInput("");
+                    }
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  disabled={isLoading}
+                />
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+                      setTags([...tags, tagInput.trim()]);
+                    }
+                    setTagInput("");
+                  }}
+                  disabled={!tagInput.trim() || isLoading}
+                >
+                  Add
+                </Button>
+              </div>
+              
+              {/* Existing Tags Suggestions */}
+              {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {activeHousehold.metadata.tags
+                    .filter((t: string) => !tags.includes(t))
+                    .map((t: string) => (
+                      <Badge 
+                        key={t} 
+                        variant="outline" 
+                        className="cursor-pointer hover:bg-muted text-xs font-normal"
+                        onClick={() => setTags([...tags, t])}
+                      >
+                        + {t}
+                      </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Receipt Upload */}

@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 
 export async function createTransaction(
   idToken: string,
@@ -18,6 +18,7 @@ export async function createTransaction(
     transactionType?: "EXPENSE" | "INCOME";
     paidBy?: string;
     receiptUrl?: string;
+    tags?: string[];
   }
 ) {
   const user = await verifyToken(idToken);
@@ -65,6 +66,7 @@ export async function createTransaction(
         date: data.date,
         transactionType: data.transactionType || "EXPENSE",
         receiptUrl: data.receiptUrl,
+        tags: data.tags || [],
         createdAt: now,
       },
     })
@@ -191,4 +193,68 @@ export async function getTransactionsFromDate(idToken: string, householdId: stri
   });
 
   return items;
+}
+
+export async function updateTransactionTags(idToken: string, householdId: string, sk: string, tags: string[]) {
+  const user = await verifyToken(idToken);
+  
+  const existingCommand = new GetCommand({
+    TableName: TABLE_NAME,
+    Key: {
+      PK: `HOUSEHOLD#${householdId}`,
+      SK: sk,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  if (!existing.Item) throw new Error("Transaction not found");
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...existing.Item,
+      tags,
+    },
+  });
+  await db.send(command);
+  return true;
+}
+
+export async function removeTagFromHouseholdTransactions(idToken: string, householdId: string, tagToRemove: string) {
+  const user = await verifyToken(idToken);
+  
+  let items: any[] = [];
+  let lastEvaluatedKey: any = undefined;
+
+  do {
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${householdId}`,
+        ":skPrefix": `TRANSACTION#`,
+      },
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+
+    const response = await db.send(command);
+    items = items.concat(response.Items || []);
+    lastEvaluatedKey = response.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+  
+  const txToUpdate = items.filter(tx => tx.tags && tx.tags.includes(tagToRemove));
+  
+  for (const tx of txToUpdate) {
+    const newTags = tx.tags.filter((t: string) => t !== tagToRemove);
+    await db.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...tx,
+          tags: newTags,
+        },
+      })
+    );
+  }
+  
+  return true;
 }

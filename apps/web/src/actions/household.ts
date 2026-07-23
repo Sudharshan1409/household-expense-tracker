@@ -295,14 +295,9 @@ export async function updateHouseholdSettings(idToken: string, householdId: stri
   const command = new PutCommand({
     TableName: TABLE_NAME,
     Item: {
-      PK: `HOUSEHOLD#${householdId}`,
-      SK: `METADATA`,
-      id: householdId,
+      ...metadata,
       name: settings.name,
       monthlyBudget: settings.monthlyBudget,
-      currency: "INR",
-      categories: metadata.categories, // retain categories
-      createdAt: metadata.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
   });
@@ -476,6 +471,67 @@ export async function updateCategoryBudgets(idToken: string, householdId: string
     },
   });
 
+  await db.send(command);
+  return true;
+}
+
+/**
+ * Add a new tag to the household metadata
+ */
+export async function addHouseholdTag(idToken: string, householdId: string, tag: string) {
+  await verifyToken(idToken);
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  const metadata = existing.Items?.[0] || {};
+  const currentTags = metadata.tags || [];
+  
+  if (currentTags.includes(tag)) return true;
+
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      tags: [...currentTags, tag],
+    },
+  });
+  await db.send(command);
+  return true;
+}
+
+/**
+ * Delete a tag from the household metadata
+ */
+export async function deleteHouseholdTag(idToken: string, householdId: string, tag: string) {
+  const user = await verifyToken(idToken);
+  await verifyOwnerOrAdmin(user.userId, householdId);
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  const metadata = existing.Items?.[0] || {};
+  const currentTags = metadata.tags || [];
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      tags: currentTags.filter((t: string) => t !== tag),
+    },
+  });
   await db.send(command);
   return true;
 }

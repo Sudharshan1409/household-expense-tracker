@@ -6,7 +6,10 @@ import { X, Receipt, SplitSquareHorizontal, User, Loader2, Trash2 } from "lucide
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers } from "@/actions/household";
 import { getDownloadPresignedUrl } from "@/actions/s3";
-import { deleteTransaction } from "@/actions/transaction";
+import { deleteTransaction, updateTransactionTags } from "@/actions/transaction";
+import { addHouseholdTag } from "@/actions/household";
+import { useHousehold } from "@/components/providers/household-provider";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -35,6 +38,41 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const { activeHousehold } = useHousehold();
+  
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [isEditingTags, setIsEditingTags] = useState(false);
+
+  useEffect(() => {
+    if (transaction) {
+      setTags(transaction.tags || []);
+      setIsEditingTags(false);
+      setTagInput("");
+    }
+  }, [transaction]);
+
+  const handleSaveTags = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) return;
+      
+      // Save any new tags to the household
+      for (const tag of tags) {
+        if (!activeHousehold?.metadata?.tags?.includes(tag)) {
+          await addHouseholdTag(token, householdId, tag);
+        }
+      }
+      
+      await updateTransactionTags(token, householdId, transaction.SK, tags);
+      setIsEditingTags(false);
+      toast("Tags updated successfully");
+      if (onDelete) onDelete(); // Reusing the onDelete callback to trigger a refresh in the parent if needed.
+    } catch (e) {
+      toast("Failed to update tags");
+    }
+  };
 
   const loadMembers = async () => {
     setIsLoading(true);
@@ -142,6 +180,101 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
               </button>
             </div>
           )}
+
+          {/* Tags Section */}
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold uppercase text-muted-foreground">Tags / Events</h3>
+              {!isEditingTags && (
+                <button 
+                  onClick={() => setIsEditingTags(true)}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  Edit Tags
+                </button>
+              )}
+            </div>
+            
+            {!isEditingTags ? (
+              <div className="flex flex-wrap gap-2">
+                {tags.length > 0 ? tags.map(tag => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                )) : <span className="text-xs text-muted-foreground">No tags</span>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="px-2 py-1 flex items-center gap-1">
+                      {tag}
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                        onClick={() => setTags(tags.filter((t) => t !== tag))}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. #Goa2026"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && tagInput.trim()) {
+                        e.preventDefault();
+                        if (!tags.includes(tagInput.trim())) {
+                          setTags([...tags, tagInput.trim()]);
+                        }
+                        setTagInput("");
+                      }
+                    }}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+                        setTags([...tags, tagInput.trim()]);
+                      }
+                      setTagInput("");
+                    }}
+                    disabled={!tagInput.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                
+                {/* Popular Tags Suggestion */}
+                {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {activeHousehold.metadata.tags
+                      .filter((t: string) => !tags.includes(t))
+                      .map((t: string) => (
+                        <Badge 
+                          key={t} 
+                          variant="outline" 
+                          className="cursor-pointer hover:bg-muted text-xs font-normal"
+                          onClick={() => setTags([...tags, t])}
+                        >
+                          + {t}
+                        </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex gap-2 justify-end pt-2">
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setTags(transaction.tags || []);
+                    setIsEditingTags(false);
+                  }}>Cancel</Button>
+                  <Button size="sm" onClick={handleSaveTags}>Save Tags</Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-6">
