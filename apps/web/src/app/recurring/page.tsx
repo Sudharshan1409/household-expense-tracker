@@ -75,7 +75,8 @@ export default function RecurringPage() {
         splitType: template.isShared ? (template.splitType || "NONE") : "NONE",
         splits: template.isShared ? (template.splits || {}) : { [currentUserId]: template.amount },
         date: new Date().toISOString(),
-        paidBy: currentUserId
+        paidBy: currentUserId,
+        tags: template.tags || []
       });
       toast(`Success! Generated transaction for ${template.description}.`);
     } catch (e) {
