@@ -257,11 +257,29 @@ async function verifyOwner(userId: string, householdId: string) {
 }
 
 /**
+ * Helper to verify caller is OWNER or ADMIN
+ */
+async function verifyOwnerOrAdmin(userId: string, householdId: string) {
+  const membershipCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `MEMBER#${userId}`,
+    },
+  });
+  const res = await db.send(membershipCommand);
+  if (!res.Items || res.Items.length === 0 || (res.Items[0].role !== "OWNER" && res.Items[0].role !== "ADMIN")) {
+    throw new Error("Unauthorized: Only an owner or admin can perform this action");
+  }
+}
+
+/**
  * Update household settings (Name, Budget). Owner or Admin only.
  */
 export async function updateHouseholdSettings(idToken: string, householdId: string, settings: { name: string; monthlyBudget: number }) {
   const user = await verifyToken(idToken);
-  await verifyOwner(user.userId, householdId);
+  await verifyOwnerOrAdmin(user.userId, householdId);
   
   const existingCommand = new QueryCommand({
     TableName: TABLE_NAME,
@@ -298,7 +316,7 @@ export async function updateHouseholdSettings(idToken: string, householdId: stri
  */
 export async function updateHouseholdCategories(idToken: string, householdId: string, categories: string[]) {
   const user = await verifyToken(idToken);
-  await verifyOwner(user.userId, householdId);
+  await verifyOwnerOrAdmin(user.userId, householdId);
   
   const existingCommand = new QueryCommand({
     TableName: TABLE_NAME,

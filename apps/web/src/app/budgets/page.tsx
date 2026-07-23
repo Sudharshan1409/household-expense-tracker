@@ -8,7 +8,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Wallet, Target, AlertTriangle, Info, Edit2 } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
-import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings } from "@/actions/household";
+import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget } from "@/actions/household";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -23,6 +23,16 @@ export default function BudgetsPage() {
   // Overall Budget State
   const [isEditingOverall, setIsEditingOverall] = useState(false);
   const [overallBudget, setOverallBudget] = useState("");
+
+  // My Budget State
+  const [isEditingMyBudget, setIsEditingMyBudget] = useState(false);
+  const [myBudgetInput, setMyBudgetInput] = useState("");
+
+  useEffect(() => {
+    if (activeHousehold?.monthlyBudget) {
+      setMyBudgetInput(activeHousehold.monthlyBudget.toString());
+    }
+  }, [activeHousehold?.monthlyBudget]);
 
   const getISTMonthString = () => {
     const now = new Date();
@@ -64,6 +74,30 @@ export default function BudgetsPage() {
     }
     loadData();
   }, [activeHousehold?.householdId, activeHousehold?.overallBudget, currentUserId, selectedMonth]);
+
+  const handleSaveMyBudget = async () => {
+    if (!activeHousehold?.householdId || !currentUserId) return;
+    setIsSaving(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) throw new Error("No token");
+
+      const numBudget = parseFloat(myBudgetInput);
+      if (isNaN(numBudget) || numBudget < 0) throw new Error("Invalid budget");
+
+      await updateMemberBudget(token, activeHousehold.householdId, numBudget);
+      
+      toast.success("My budget updated");
+      setIsEditingMyBudget(false);
+      refreshHouseholds();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update personal budget");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveOverallBudget = async () => {
     if (!activeHousehold?.householdId) return;
@@ -246,10 +280,29 @@ export default function BudgetsPage() {
                 </Tooltip>
               </div>
               
-              <div className="flex items-baseline gap-2 pt-1">
-                <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{myBudgetNum.toLocaleString()}</span>
-                <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
-              </div>
+              {isEditingMyBudget ? (
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="relative w-48">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                    <input
+                      type="number"
+                      value={myBudgetInput}
+                      onChange={(e) => setMyBudgetInput(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                  <Button size="sm" onClick={handleSaveMyBudget} disabled={isSaving}>Save</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingMyBudget(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <div className="flex items-baseline gap-2 pt-1">
+                  <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{myBudgetNum.toLocaleString()}</span>
+                  <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditingMyBudget(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             
             <div className="space-y-3 pt-4 border-t">
