@@ -5,7 +5,13 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
-import { Repeat, Plus, Play, Trash2, Edit2 } from "lucide-react";
+import { Repeat, Plus, Play, Trash2, Edit2, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +36,7 @@ export default function RecurringPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [templateToDelete, setTemplateToDelete] = useState<any>(null);
 
   const loadTemplates = async () => {
     if (!activeHousehold?.householdId) return;
@@ -84,10 +91,14 @@ export default function RecurringPage() {
       const token = session.tokens?.idToken?.toString();
       if (token) {
         await deleteTemplate(token, activeHousehold.householdId, templateId);
+        toast("Template deleted successfully.");
         loadTemplates();
       }
     } catch (e) {
       console.error(e);
+      toast("Failed to delete template.");
+    } finally {
+      setTemplateToDelete(null);
     }
   };
 
@@ -137,33 +148,30 @@ export default function RecurringPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingTemplate(tpl); setIsModalOpen(true); }}>
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10">
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will delete this recurring template. Future transactions will not be automatically generated.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(tpl.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Delete Template
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                   <Button variant="outline" size="sm" onClick={() => handlePostNow(tpl)}>
                     <Play className="mr-2 h-4 w-4" />
                     Post Now
                   </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => { setEditingTemplate(tpl); setIsModalOpen(true); }}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Edit Template
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setTemplateToDelete(tpl)}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Template
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))
@@ -178,6 +186,26 @@ export default function RecurringPage() {
         onSuccess={loadTemplates}
         existingTemplate={editingTemplate}
       />
+
+      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{templateToDelete?.description}</strong>? Future transactions will not be automatically generated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => templateToDelete && handleDelete(templateToDelete.id)} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
