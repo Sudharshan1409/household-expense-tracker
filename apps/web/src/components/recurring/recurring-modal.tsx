@@ -292,11 +292,11 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
                   Add
                 </Button>
               </div>
-              {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.filter(t => !tags.includes(t)).length > 0 && (
+              {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.filter((t: string) => !tags.includes(t)).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {activeHousehold.metadata.tags
-                    .filter(t => !tags.includes(t))
-                    .map(t => (
+                    .filter((t: string) => !tags.includes(t))
+                    .map((t: string) => (
                       <Badge 
                         key={t} 
                         variant="outline" 
