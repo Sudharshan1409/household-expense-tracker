@@ -141,6 +141,9 @@ export default function BudgetsPage() {
   const totalHouseholdSpend = transactions.reduce((a: number, b: any) => a + (b.amount || 0), 0);
   const overallBudgetNum = parseFloat(overallBudget) || 0;
   const overallProgress = overallBudgetNum > 0 ? Math.min((totalHouseholdSpend / overallBudgetNum) * 100, 100) : 0;
+  
+  const myBudgetNum = activeHousehold?.monthlyBudget || 0;
+  const myProgress = myBudgetNum > 0 ? Math.min((totalMySpend / myBudgetNum) * 100, 100) : 0;
 
   return (
     <div className="space-y-8">
@@ -166,59 +169,100 @@ export default function BudgetsPage() {
         />
       </div>
 
-      {/* Overall Household Budget Card */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
-        
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight">Overall Household Budget</h2>
-              <Tooltip>
-                <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
-                <Info className="h-4 w-4" />
-              </TooltipTrigger>
-                <TooltipContent>
-                  <p className="w-[200px] text-sm">This is the combined monthly spending limit for everyone in the household.</p>
-                </TooltipContent>
-              </Tooltip>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Overall Household Budget Card */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 overflow-hidden relative flex flex-col justify-between">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+          
+          <div className="relative space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold tracking-tight">Overall Household Budget</h2>
+                <Tooltip>
+                  <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
+                    <Info className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-[200px] text-sm">This is the combined monthly spending limit for everyone in the household.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              
+              {isEditingOverall ? (
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="relative w-48">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                    <input
+                      type="number"
+                      value={overallBudget}
+                      onChange={(e) => setOverallBudget(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                  <Button size="sm" onClick={handleSaveOverallBudget} disabled={isSaving}>Save</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingOverall(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <div className="flex items-baseline gap-2 pt-1">
+                  <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
+                  <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             
-            {isEditingOverall ? (
-              <div className="flex items-center gap-3 pt-2">
-                <div className="relative w-48">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
-                  <input
-                    type="number"
-                    value={overallBudget}
-                    onChange={(e) => setOverallBudget(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  />
-                </div>
-                <Button size="sm" onClick={handleSaveOverallBudget} disabled={isSaving}>Save</Button>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditingOverall(false)}>Cancel</Button>
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex justify-between text-sm font-medium">
+                <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
+                <span className="text-muted-foreground">{overallProgress.toFixed(0)}%</span>
               </div>
-            ) : (
-              <div className="flex items-baseline gap-2 pt-1">
-                <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
-                <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
-                <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
-                  <Edit2 className="h-4 w-4" />
-                </Button>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                <div 
+                  className={`h-full transition-all duration-1000 ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
+                  style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                />
               </div>
-            )}
-          </div>
-          
-          <div className="md:w-1/3 space-y-3">
-            <div className="flex justify-between text-sm font-medium">
-              <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
-              <span className="text-muted-foreground">{overallProgress.toFixed(0)}%</span>
             </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-              <div 
-                className={`h-full transition-all duration-1000 ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
-                style={{ width: `${Math.min(overallProgress, 100)}%` }}
-              />
+          </div>
+        </div>
+
+        {/* My Monthly Budget Card */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 overflow-hidden relative flex flex-col justify-between">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+          
+          <div className="relative space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold tracking-tight">My Monthly Budget</h2>
+                <Tooltip>
+                  <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
+                  <Info className="h-4 w-4" />
+                </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-[200px] text-sm">This is your personal spending limit. It tracks only your share of the household expenses.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              
+              <div className="flex items-baseline gap-2 pt-1">
+                <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{myBudgetNum.toLocaleString()}</span>
+                <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
+              </div>
+            </div>
+            
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex justify-between text-sm font-medium">
+                <span>₹{totalMySpend.toLocaleString()} spent</span>
+                <span className="text-muted-foreground">{myProgress.toFixed(0)}%</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                <div 
+                  className={`h-full transition-all duration-1000 ${myProgress > 100 ? 'bg-destructive' : myProgress > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                  style={{ width: `${Math.min(myProgress, 100)}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
