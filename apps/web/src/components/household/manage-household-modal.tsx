@@ -7,6 +7,16 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole, updateMemberName } from "@/actions/household";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ManageHouseholdModalProps {
   isOpen: boolean;
@@ -26,6 +36,9 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
   
   const [userName, setUserName] = useState("");
   const [isProfileLoading, setIsProfileLoading] = useState(false);
+  
+  const [pendingRoleChange, setPendingRoleChange] = useState<{userId: string, newRole: "ADMIN" | "MEMBER", userName: string} | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{userId: string, userName: string} | null>(null);
 
   const isOwner = household?.role === "OWNER";
 
@@ -122,33 +135,39 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
     }
   };
 
-  const handleRoleChange = async (targetUserId: string, newRole: "OWNER" | "ADMIN" | "MEMBER") => {
-    if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
+  const executeRoleChange = async () => {
+    if (!pendingRoleChange) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        await changeMemberRole(token, household.householdId, targetUserId, newRole);
+        await changeMemberRole(token, household.householdId, pendingRoleChange.userId, pendingRoleChange.newRole);
         fetchMembers();
+        toast("Role updated successfully.");
       }
     } catch (error) {
       console.error(error);
       toast("Failed to change role.");
+    } finally {
+      setPendingRoleChange(null);
     }
   };
 
-  const handleRemoveMember = async (targetUserId: string) => {
-    if (!confirm("Are you sure you want to remove this member from the household?")) return;
+  const executeRemoveMember = async () => {
+    if (!pendingRemove) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        await removeMember(token, household.householdId, targetUserId);
+        await removeMember(token, household.householdId, pendingRemove.userId);
         fetchMembers();
+        toast("Member removed from household.");
       }
     } catch (error) {
       console.error(error);
       toast("Failed to remove member.");
+    } finally {
+      setPendingRemove(null);
     }
   };
 
@@ -335,12 +354,18 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                           <select
                             className="text-xs border rounded-md px-2 py-1 bg-background"
                             value={m.role}
-                            onChange={(e) => handleRoleChange(m.userId, e.target.value as any)}
+                            onChange={(e) => {
+                              // Revert select temporarily until confirmed
+                              const selectEl = e.target;
+                              const newRole = selectEl.value as "ADMIN" | "MEMBER";
+                              selectEl.value = m.role;
+                              setPendingRoleChange({ userId: m.userId, newRole, userName: m.userName || m.userId });
+                            }}
                           >
                             <option value="MEMBER">Member</option>
                             <option value="ADMIN">Admin</option>
                           </select>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveMember(m.userId)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setPendingRemove({ userId: m.userId, userName: m.userName || m.userId })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -353,6 +378,39 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!pendingRoleChange} onOpenChange={(open) => !open && setPendingRoleChange(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Role</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change <strong>{pendingRoleChange?.userName}</strong>&apos;s role to <strong>{pendingRoleChange?.newRole}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeRoleChange}>Confirm Change</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingRemove} onOpenChange={(open) => !open && setPendingRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{pendingRemove?.userName}</strong> from this household? They will lose access to all shared data immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeRemoveMember} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

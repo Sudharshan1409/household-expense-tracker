@@ -8,6 +8,16 @@ import { Home, Users, UserPlus, LogOut, Trash2, Settings as SettingsIcon } from 
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { PageLoader } from "@/components/ui/page-loader";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function SettingsPage() {
   const [households, setHouseholds] = useState<any[]>([]);
@@ -16,6 +26,9 @@ export default function SettingsPage() {
   // State for the modal
   const [activeHousehold, setActiveHousehold] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [pendingLeave, setPendingLeave] = useState<any>(null);
+  const [pendingDelete, setPendingDelete] = useState<any>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -52,33 +65,39 @@ export default function SettingsPage() {
     toast("Invite link copied to clipboard!");
   };
 
-  const handleLeave = async (householdId: string) => {
-    if (!confirm("Are you sure you want to leave this household?")) return;
+  const executeLeave = async () => {
+    if (!pendingLeave) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        await leaveHousehold(token, householdId);
+        await leaveHousehold(token, pendingLeave.householdId);
+        toast("Left household successfully.");
         loadData();
       }
     } catch (error) {
       console.error("Failed to leave", error);
       toast("Failed to leave household.");
+    } finally {
+      setPendingLeave(null);
     }
   };
 
-  const handleDelete = async (householdId: string) => {
-    if (!confirm("Are you SURE you want to permanently delete this household and ALL its transactions?")) return;
+  const executeDelete = async () => {
+    if (!pendingDelete) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        await deleteHousehold(token, householdId);
+        await deleteHousehold(token, pendingDelete.householdId);
+        toast("Household deleted.");
         loadData();
       }
     } catch (error: any) {
       console.error("Failed to delete", error);
       toast(error.message || "Failed to delete household.");
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -123,12 +142,12 @@ export default function SettingsPage() {
                     <SettingsIcon className="w-4 h-4 sm:mr-2" />
                     <span className="ml-2 sm:ml-0">Manage</span>
                   </Button>
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLeave(hh.householdId)} title="Leave Household">
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => setPendingLeave(hh)} title="Leave Household">
                     <LogOut className="w-4 h-4 sm:mr-2" />
                     <span className="ml-2 sm:ml-0">Leave</span>
                   </Button>
                   {hh.role === "OWNER" && (
-                    <Button variant="outline" className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20" onClick={() => handleDelete(hh.householdId)} title="Delete Household">
+                    <Button variant="outline" className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20" onClick={() => setPendingDelete(hh)} title="Delete Household">
                       <Trash2 className="w-4 h-4 sm:mr-2" />
                       <span className="ml-2 sm:ml-0">Delete</span>
                     </Button>
@@ -152,6 +171,41 @@ export default function SettingsPage() {
         household={activeHousehold}
         onSuccess={() => { setIsModalOpen(false); loadData(); }}
       />
+      
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!pendingLeave} onOpenChange={(open) => !open && setPendingLeave(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave Household</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to leave <strong>{pendingLeave?.name}</strong>? You will lose access to all its data and settings immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeLeave} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Household</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you <strong>absolutely sure</strong> you want to permanently delete <strong>{pendingDelete?.name}</strong> and <strong>ALL</strong> its transactions? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
