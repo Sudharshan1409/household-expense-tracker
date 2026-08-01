@@ -33,11 +33,11 @@ export function BottomNav() {
       </Link>
       
       <Link
-        href="/households"
-        className={`flex flex-col items-center justify-center gap-1 ${pathname === "/households" ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
+        href="/budgets"
+        className={`flex flex-col items-center justify-center gap-1 ${pathname === "/budgets" ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
       >
-        <Users className="h-5 w-5" />
-        <span className="text-[10px] font-medium">Households</span>
+        <Wallet className="h-5 w-5" />
+        <span className="text-[10px] font-medium">Budgets</span>
       </Link>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -78,12 +78,12 @@ export function BottomNav() {
             </Link>
             
             <Link
-              href="/budgets"
+              href="/households"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-lg p-3 text-muted-foreground transition-all hover:bg-muted hover:text-primary border"
             >
-              <Wallet className="h-5 w-5" />
-              <span className="font-medium">Budgets</span>
+              <Users className="h-5 w-5" />
+              <span className="font-medium">Households</span>
             </Link>
             
             <Link
