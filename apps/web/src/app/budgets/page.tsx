@@ -163,8 +163,9 @@ export default function BudgetsPage() {
     return <PageLoader title="Loading budget data..." />;
   }
 
-  // Calculate actuals based ONLY on the user's individual share of the split
-  const actualsMap = transactions.reduce((acc, tx) => {
+  // Calculate actuals based ONLY on the user's individual share of the split, ignoring INCOME transactions
+  const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
+  const actualsMap = expenseTxs.reduce((acc, tx) => {
     const cat = tx.category || "Other";
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     acc[cat] = (acc[cat] || 0) + myShare;
@@ -172,7 +173,7 @@ export default function BudgetsPage() {
   }, {} as Record<string, number>);
 
   const totalMySpend = Object.values(actualsMap).reduce((a: number, b: any) => a + (b as number), 0);
-  const totalHouseholdSpend = transactions.reduce((a: number, b: any) => a + (b.amount || 0), 0);
+  const totalHouseholdSpend = expenseTxs.reduce((a: number, b: any) => a + (b.amount || 0), 0);
   const overallBudgetNum = parseFloat(overallBudget) || 0;
   const overallProgress = overallBudgetNum > 0 ? Math.min((totalHouseholdSpend / overallBudgetNum) * 100, 100) : 0;
   
