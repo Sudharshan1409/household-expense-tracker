@@ -39,6 +39,14 @@ export function BottomNav() {
         <Wallet className="h-5 w-5" />
         <span className="text-[10px] font-medium">Budgets</span>
       </Link>
+      
+      <Link
+        href="/recurring"
+        className={`flex flex-col items-center justify-center gap-1 ${pathname === "/recurring" ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
+      >
+        <Repeat className="h-5 w-5" />
+        <span className="text-[10px] font-medium">Recurring</span>
+      </Link>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary">
@@ -84,15 +92,6 @@ export function BottomNav() {
             >
               <Users className="h-5 w-5" />
               <span className="font-medium">Households</span>
-            </Link>
-            
-            <Link
-              href="/recurring"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg p-3 text-muted-foreground transition-all hover:bg-muted hover:text-primary border"
-            >
-              <Repeat className="h-5 w-5" />
-              <span className="font-medium">Recurring</span>
             </Link>
           </div>
         </SheetContent>
