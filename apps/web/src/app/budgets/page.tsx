@@ -175,10 +175,18 @@ export default function BudgetsPage() {
   const totalMySpend = Object.values(actualsMap).reduce((a: number, b: any) => a + (b as number), 0);
   const totalHouseholdSpend = expenseTxs.reduce((a: number, b: any) => a + (b.amount || 0), 0);
   const overallBudgetNum = parseFloat(overallBudget) || 0;
-  const overallProgress = overallBudgetNum > 0 ? Math.min((totalHouseholdSpend / overallBudgetNum) * 100, 100) : 0;
+  const overallProgress = overallBudgetNum > 0 ? (totalHouseholdSpend / overallBudgetNum) * 100 : 0;
   
   const myBudgetNum = activeHousehold?.monthlyBudget || 0;
-  const myProgress = myBudgetNum > 0 ? Math.min((totalMySpend / myBudgetNum) * 100, 100) : 0;
+  const myProgress = myBudgetNum > 0 ? (totalMySpend / myBudgetNum) * 100 : 0;
+
+  const formatPercentage = (actual: number, budget: number) => {
+    if (budget <= 0) return "0%";
+    const pct = (actual / budget) * 100;
+    if (pct >= 100) return `${Math.round(pct)}%`;
+    if (Math.round(pct) === 100) return "99.9%";
+    return `${Math.round(pct)}%`;
+  };
 
   return (
     <div className="space-y-8">
@@ -251,7 +259,7 @@ export default function BudgetsPage() {
             <div className="space-y-3 pt-4 border-t">
               <div className="flex justify-between text-sm font-medium">
                 <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
-                <span className="text-muted-foreground">{overallProgress.toFixed(0)}%</span>
+                <span className="text-muted-foreground">{formatPercentage(totalHouseholdSpend, overallBudgetNum)}</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
                 <div 
@@ -309,7 +317,7 @@ export default function BudgetsPage() {
             <div className="space-y-3 pt-4 border-t">
               <div className="flex justify-between text-sm font-medium">
                 <span>₹{totalMySpend.toLocaleString()} spent</span>
-                <span className="text-muted-foreground">{myProgress.toFixed(0)}%</span>
+                <span className="text-muted-foreground">{formatPercentage(totalMySpend, myBudgetNum)}</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
                 <div 
@@ -361,7 +369,7 @@ export default function BudgetsPage() {
               const actual = actualsMap[cat] || 0;
               const budget = categoryBudgets[cat] || 0;
               const hasBudget = budget > 0;
-              const progress = hasBudget ? Math.min((actual / budget) * 100, 100) : 0;
+              const progress = hasBudget ? (actual / budget) * 100 : 0;
               const isOver = hasBudget && actual > budget;
               const isWarning = hasBudget && progress >= 80 && !isOver;
 
@@ -397,7 +405,7 @@ export default function BudgetsPage() {
                         </span>
                         {hasBudget && (
                           <span className="text-muted-foreground">
-                            {progress.toFixed(0)}%
+                            {formatPercentage(actual, budget)}
                           </span>
                         )}
                       </div>
@@ -406,7 +414,7 @@ export default function BudgetsPage() {
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                           <div 
                             className={`h-full transition-all duration-500 ${isOver ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                            style={{ width: `${progress}%` }}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
                           />
                         </div>
                       ) : (
