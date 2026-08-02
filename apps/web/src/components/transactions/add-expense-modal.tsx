@@ -150,6 +150,10 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         }
       }
 
+      const [year, month, day] = date.split("-").map(Number);
+      const now = new Date();
+      const timestampedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+
       await createTransaction(token, householdId, {
         amount: Number(amount),
         description,
@@ -157,7 +161,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         isShared,
         splitType: isShared ? splitType : "NONE",
         splits: isShared ? splits : {},
-        date: new Date(date).toISOString(),
+        date: timestampedDate.toISOString(),
         transactionType,
         paidBy,
         receiptUrl: finalReceiptUrl,

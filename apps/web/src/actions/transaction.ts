@@ -163,7 +163,10 @@ export async function getRecentTransactions(idToken: string, householdId: string
   items.sort((a, b) => {
     const dateA = new Date(a.date || a.createdAt).getTime();
     const dateB = new Date(b.date || b.createdAt).getTime();
-    return dateB - dateA;
+    if (dateA !== dateB) {
+      return dateB - dateA;
+    }
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
   return items;
@@ -247,7 +250,10 @@ export async function getTransactionsFromDate(idToken: string, householdId: stri
   items.sort((a, b) => {
     const dateA = new Date(a.date || a.createdAt).getTime();
     const dateB = new Date(b.date || b.createdAt).getTime();
-    return dateB - dateA;
+    if (dateA !== dateB) {
+      return dateB - dateA;
+    }
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
   return items;
