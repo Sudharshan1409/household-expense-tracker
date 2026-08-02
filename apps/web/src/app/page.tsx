@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KPICard } from "@/components/ui/kpi-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { Plus, IndianRupee } from "lucide-react";
+import { Plus, IndianRupee, Home, Clock, Target } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
@@ -16,6 +15,10 @@ import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-rea
 import { PageLoader } from "@/components/ui/page-loader";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+const formatINR = (val: number) => {
+  return `₹${val.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 0 })}`;
+};
 
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
@@ -160,38 +163,101 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total Household Spend"
-          value={`₹${totalSpend.toFixed(2)}`}
-          description="Total expenses across all members"
-          trend={{ 
-            value: spendDiff !== 0 ? `${spendDiff > 0 ? "+" : "-"}${Math.abs(spendDiff).toFixed(1)}%` : "+0%", 
-            label: spendDiff > 0 ? "vs last month" : "vs last month", 
-            isPositive: spendDiff <= 0 // less spend is positive
-          }}
-        />
-        <KPICard
-          title="My Spend"
-          value={`₹${mySpend.toFixed(2)}`}
-          description="Your share of expenses"
-          trend={{ 
-            value: mySpendDiff !== 0 ? `${mySpendDiff > 0 ? "+" : "-"}${Math.abs(mySpendDiff).toFixed(1)}%` : "+0%", 
-            label: mySpendDiff > 0 ? "vs last month" : "vs last month", 
-            isPositive: mySpendDiff <= 0 
-          }}
-        />
-        <KPICard
-          title="Average Daily Spend"
-          value={`₹${avgDailySpend.toFixed(2)}`}
-          description={`Based on ${currentDay} days`}
-        />
-        <KPICard
-          title="Budget Remaining"
-          value={`₹${Math.max(budgetRemaining, 0).toFixed(2)}`}
-          description={myBudget ? `${budgetProgress.toFixed(0)}% used of ₹${myBudget}` : "No budget set"}
-          trend={{ value: budgetRemaining < 0 ? `Over by ₹${Math.abs(budgetRemaining).toFixed(2)}` : "On track", label: "budget status", isPositive: budgetRemaining >= 0 }}
-        />
+      <div className="space-y-4">
+        {/* Hero Banner Card */}
+        <div className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Home className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Total Household Spend</h3>
+                </div>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                {format(new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]) - 1), "MMM yyyy")}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+              <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                {formatINR(totalSpend)}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs">
+                {spendDiff !== 0 ? (
+                  <span className={`inline-flex items-center font-semibold ${spendDiff <= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                    {spendDiff > 0 ? "+" : "-"}{Math.abs(spendDiff).toFixed(1)}%
+                  </span>
+                ) : (
+                  <span className="font-semibold text-muted-foreground">+0%</span>
+                )}{" "}
+                <span className="text-muted-foreground">vs last month</span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Your Share:</span>
+                <span className="font-bold text-foreground">{formatINR(mySpend)}</span>
+                {totalSpend > 0 && (
+                  <span className="text-muted-foreground">({Math.round((mySpend / totalSpend) * 100)}% of total)</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Your trend:</span>
+                {mySpendDiff !== 0 ? (
+                  <span className={`font-medium ${mySpendDiff <= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                    {mySpendDiff > 0 ? "+" : "-"}{Math.abs(mySpendDiff).toFixed(1)}%
+                  </span>
+                ) : (
+                  <span className="font-medium">same as last month</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact 2-Column Row */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Daily Avg</span>
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+            <div>
+              <div className="text-lg sm:text-2xl font-bold">{formatINR(avgDailySpend)}</div>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
+                Based on {currentDay} day{currentDay === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Budget Left</span>
+              <Target className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+            <div>
+              <div className={`text-lg sm:text-2xl font-bold ${budgetRemaining < 0 ? "text-destructive" : ""}`}>
+                {myBudget ? formatINR(budgetRemaining) : "Not set"}
+              </div>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 truncate">
+                {myBudget ? (
+                  budgetRemaining < 0 ? (
+                    <span className="text-destructive font-medium">Over by {formatINR(Math.abs(budgetRemaining))}</span>
+                  ) : (
+                    <span>{budgetProgress.toFixed(0)}% used of {formatINR(myBudget)}</span>
+                  )
+                ) : (
+                  "Set in Budgets tab"
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
