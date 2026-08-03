@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Settings, Users, Edit3, Trash2, Shield, User } from "lucide-react";
+import { X, Settings, Users, Edit3, Trash2, Shield, User, MessageSquare } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole, updateMemberName } from "@/actions/household";
 import { CategoriesManager } from "@/components/settings/categories-manager";
+import { TelegramSettings } from "@/components/settings/telegram-settings";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -26,7 +27,7 @@ interface ManageHouseholdModalProps {
 }
 
 export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: ManageHouseholdModalProps) {
-  const [activeTab, setActiveTab] = useState<"general" | "members">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "members" | "telegram">("general");
   const [name, setName] = useState(household?.name || "");
   const [budget, setBudget] = useState(household?.monthlyBudget || 50000);
   const [members, setMembers] = useState<any[]>([]);
@@ -200,6 +201,13 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
             onClick={() => setActiveTab("members")}
           >
             Members <span className="bg-muted text-xs px-2 py-0.5 rounded-full">{members.length || 0}</span>
+          </button>
+          <button
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === "telegram" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setActiveTab("telegram")}
+          >
+            <MessageSquare className="h-4 w-4 text-sky-500" />
+            Telegram
           </button>
         </div>
 
@@ -375,6 +383,9 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                 </div>
               )}
             </div>
+          )}
+          {activeTab === "telegram" && (
+            <TelegramSettings />
           )}
         </div>
       </div>
