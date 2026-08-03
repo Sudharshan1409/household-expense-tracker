@@ -425,7 +425,7 @@ async function saveAndFinishTransaction(chatId: string | number, profile: any, s
     isShared,
     splitType: isShared ? "EQUAL" : "NONE",
     splits: finalSplits,
-    date: now.slice(0, 10), // YYYY-MM-DD
+    date: now, // Full ISO timestamp for sorting and display accuracy
     transactionType: session.draft.transactionType || "EXPENSE",
     tags: session.draft.tags || [],
     createdAt: now
@@ -443,6 +443,32 @@ async function saveAndFinishTransaction(chatId: string | number, profile: any, s
           }
         }
       });
+    }
+
+    // Ensure tags exist in household metadata
+    try {
+      const metaRes = await db.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `HOUSEHOLD#${profile.householdId}`, SK: "METADATA" }
+      }));
+      const metadata = metaRes.Item || {};
+      const currentTags = metadata.tags || [];
+      let newTagAdded = false;
+      const updatedTags = [...currentTags];
+      for (const tag of session.draft.tags) {
+        if (!updatedTags.includes(tag)) {
+          updatedTags.push(tag);
+          newTagAdded = true;
+        }
+      }
+      if (newTagAdded) {
+        await db.send(new PutCommand({
+          TableName: TABLE_NAME,
+          Item: { ...metadata, tags: updatedTags }
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to update household metadata tags:", err);
     }
   }
 
