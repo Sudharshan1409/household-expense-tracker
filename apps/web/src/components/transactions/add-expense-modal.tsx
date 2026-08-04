@@ -13,15 +13,25 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+export interface ScannedReceiptData {
+  amount?: number | string;
+  description?: string;
+  category?: string;
+  date?: string;
+  tags?: string[];
+  file?: File | null;
+}
+
 interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   householdId: string;
   onSuccess: () => void;
   currentUserId?: string;
+  initialData?: ScannedReceiptData | null;
 }
 
-export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, currentUserId }: AddExpenseModalProps) {
+export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, currentUserId, initialData }: AddExpenseModalProps) {
   const { activeHousehold } = useHousehold();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -67,20 +77,25 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   useEffect(() => {
     if (isOpen) {
       loadMembers();
-      setAmount("");
-      setDescription("");
-      setCategory("Other");
-      const d = new Date();
-      d.setHours(d.getHours() + 5);
-      d.setMinutes(d.getMinutes() + 30);
-      setDate(d.toISOString().split("T")[0]);
+      setAmount(initialData?.amount !== undefined && initialData?.amount !== "" ? String(initialData.amount) : "");
+      setDescription(initialData?.description || "");
+      setCategory(initialData?.category || "Other");
+      if (initialData?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialData.date)) {
+        setDate(initialData.date);
+      } else {
+        const d = new Date();
+        d.setHours(d.getHours() + 5);
+        d.setMinutes(d.getMinutes() + 30);
+        setDate(d.toISOString().split("T")[0]);
+      }
       setSplitType("EQUAL");
       setPaidBy(currentUserId || "");
       setError("");
-      setTags([]);
+      setTags(initialData?.tags || []);
       setTagInput("");
+      setReceiptFile(initialData?.file || null);
     }
-  }, [isOpen, currentUserId]);
+  }, [isOpen, currentUserId, initialData]);
 
   const handleSplitChange = (userId: string, val: string) => {
     setSplits(prev => ({
@@ -205,6 +220,15 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 pb-2">
           <div className="space-y-4">
+            {initialData && (
+              <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 border border-purple-500/30 text-purple-800 dark:text-purple-200 p-3 rounded-xl text-sm flex items-center gap-2 shadow-sm animate-in fade-in-50">
+                <span className="text-base">✨</span>
+                <div>
+                  <span className="font-semibold block">AI Extracted Details</span>
+                  <span className="text-xs text-muted-foreground">Please review and confirm the auto-filled fields below.</span>
+                </div>
+              </div>
+            )}
             {/* Transaction Type Toggle */}
             <div className="flex rounded-lg border p-1 bg-muted/50">
               <button
@@ -382,6 +406,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 disabled={isLoading}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               />
+              {receiptFile && (
+                <div className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-2 mt-2 flex items-center justify-between font-medium">
+                  <span className="truncate max-w-[200px]">📎 Attached: {receiptFile.name || "scanned-receipt.jpg"}</span>
+                  <button type="button" onClick={() => setReceiptFile(null)} className="text-destructive hover:underline ml-2">Remove</button>
+                </div>
+              )}
             </div>
 
             <div className="border rounded-xl overflow-hidden mt-2">

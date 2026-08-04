@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, IndianRupee, Home, Clock, Target } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
-import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
+import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
+import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
@@ -23,6 +24,7 @@ const formatINR = (val: number) => {
 export default function Dashboard() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -146,7 +148,20 @@ export default function Dashboard() {
             <HouseholdSwitcher />
           </div>
           
-          <Button onClick={() => setIsModalOpen(true)} className="hidden sm:flex ml-2">
+          <ScanReceiptButton
+            onScanSuccess={(data) => {
+              setScannedData(data);
+              setIsModalOpen(true);
+            }}
+            className="hidden sm:flex ml-2"
+          />
+          <Button
+            onClick={() => {
+              setScannedData(null);
+              setIsModalOpen(true);
+            }}
+            className="hidden sm:flex ml-2"
+          >
             <IndianRupee className="mr-2 h-4 w-4" />
             Add Expense
           </Button>
@@ -340,9 +355,16 @@ export default function Dashboard() {
         <>
           <AddExpenseModal
             isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => {
+              setIsModalOpen(false);
+              setScannedData(null);
+            }}
             householdId={activeHousehold.householdId}
-            onSuccess={loadTransactions}
+            onSuccess={() => {
+              loadTransactions();
+              setScannedData(null);
+            }}
+            initialData={scannedData}
           />
           <TransactionDetailsModal
             isOpen={!!selectedTx}
@@ -362,14 +384,26 @@ export default function Dashboard() {
             onSuccess={() => setIsManageModalOpen(false)}
           />
           
-          {/* Mobile FAB for Add Expense */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="md:hidden fixed bottom-20 right-4 z-40 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
-          >
-            <IndianRupee className="h-5 w-5" />
-            <span>Add Expense</span>
-          </button>
+          {/* Mobile FABs for Scan and Add Expense */}
+          <div className="md:hidden fixed bottom-20 right-4 z-40 flex flex-col gap-3 items-end">
+            <ScanReceiptButton
+              onScanSuccess={(data) => {
+                setScannedData(data);
+                setIsModalOpen(true);
+              }}
+              className="rounded-full shadow-xl border border-purple-500/40 px-4 py-2.5 bg-background/95 backdrop-blur-md text-xs font-bold"
+            />
+            <button
+              onClick={() => {
+                setScannedData(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 font-bold text-primary-foreground shadow-xl hover:bg-primary/90 active:scale-95 transition-all"
+            >
+              <IndianRupee className="h-5 w-5" />
+              <span>Add Expense</span>
+            </button>
+          </div>
         </>
       )}
     </div>

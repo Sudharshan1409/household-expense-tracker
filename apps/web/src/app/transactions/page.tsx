@@ -11,7 +11,8 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
-import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
+import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
+import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { format } from "date-fns";
 import { deleteTransaction, updateTransactionTags } from "@/actions/transaction";
@@ -31,6 +32,7 @@ import {
 export default function TransactionsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -214,7 +216,20 @@ export default function TransactionsPage() {
         </div>
         <div className="flex items-center gap-3">
           <HouseholdSwitcher />
-          <Button className="hidden sm:flex" onClick={() => setIsAddModalOpen(true)}>
+          <ScanReceiptButton
+            onScanSuccess={(data) => {
+              setScannedData(data);
+              setIsAddModalOpen(true);
+            }}
+            className="hidden sm:flex"
+          />
+          <Button
+            className="hidden sm:flex"
+            onClick={() => {
+              setScannedData(null);
+              setIsAddModalOpen(true);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Expense
           </Button>
@@ -392,9 +407,16 @@ export default function TransactionsPage() {
         <>
           <AddExpenseModal
             isOpen={isAddModalOpen}
-            onClose={() => setIsAddModalOpen(false)}
+            onClose={() => {
+              setIsAddModalOpen(false);
+              setScannedData(null);
+            }}
             householdId={activeHousehold.householdId}
-            onSuccess={loadTransactions}
+            onSuccess={() => {
+              loadTransactions();
+              setScannedData(null);
+            }}
+            initialData={scannedData}
           />
           <TransactionDetailsModal
             isOpen={!!selectedTx}
