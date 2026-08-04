@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ ok: false, error: "GEMINI_API_KEY is not configured on the server." }, { status: 500 });
     }
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const promptText = `Analyze this receipt, bill, invoice, or payment app screenshot (Google Pay, PhonePe, credit card slip, etc.).
 Extract the expense details and return ONLY a valid JSON object matching this exact schema:
