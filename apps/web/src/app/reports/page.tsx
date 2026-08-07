@@ -270,7 +270,14 @@ export default function ReportsPage() {
           onValueChange={(val) => setSelectedMonth(val as string)}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select Month" />
+            <SelectValue placeholder="Select Month">
+              {(() => {
+                if (!selectedMonth) return "Select Month";
+                const [y, m] = selectedMonth.split('-');
+                const d = new Date(parseInt(y), parseInt(m) - 1);
+                return d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+              })()}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {Array.from({ length: 24 }).map((_, i) => {

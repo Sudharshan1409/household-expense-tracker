@@ -173,7 +173,9 @@ export default function SavingsPage() {
             disabled={isLoading}
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Range" />
+              <SelectValue placeholder="Select Range">
+                {RANGES.find(r => r.value === selectedRangeValue)?.label || "Select Range"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {RANGES.map((r) => (

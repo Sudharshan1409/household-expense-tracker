@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Plus } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
@@ -51,6 +53,38 @@ export default function TransactionsPage() {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempCategory, setTempCategory] = useState("ALL");
+  const [tempMember, setTempMember] = useState("ALL");
+  const [tempMonth, setTempMonth] = useState<string>(getISTMonthString());
+
+  const applyFilters = () => {
+    const monthChanged = tempMonth !== selectedMonth;
+    setFilterCategory(tempCategory);
+    setFilterMember(tempMember);
+    if (monthChanged) {
+      setSelectedMonth(tempMonth);
+    }
+    setCurrentPage(1);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setFilterCategory("ALL");
+    setFilterMember("ALL");
+    const m = getISTMonthString();
+    setSelectedMonth(m);
+    
+    setTempCategory("ALL");
+    setTempMember("ALL");
+    setTempMonth(m);
+    setCurrentPage(1);
+  };
+
+  const activeFilterCount = (filterCategory !== "ALL" ? 1 : 0) + 
+                            (filterMember !== "ALL" ? 1 : 0) + 
+                            (selectedMonth !== getISTMonthString() ? 1 : 0);
 
   // Pagination & Selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -237,8 +271,8 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 items-center">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             placeholder="Search transactions..."
@@ -248,53 +282,137 @@ export default function TransactionsPage() {
           />
         </div>
         
-        <Select value={filterCategory} onValueChange={(val) => setFilterCategory(val as string)}>
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Categories</SelectItem>
-            {activeHousehold?.categories?.map((c: string) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
+          setIsFilterModalOpen(open);
+          if (open) {
+            setTempCategory(filterCategory);
+            setTempMember(filterMember);
+            setTempMonth(selectedMonth);
+          }
+        }}>
+          <Button variant="outline" className="h-10 w-full sm:w-auto" onClick={() => setIsFilterModalOpen(true)}>
+            <Filter className="mr-2 h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2 px-1 rounded-sm text-xs">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Filter Transactions</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Month</span>
+                <Select value={tempMonth} onValueChange={(val) => setTempMonth(val as string)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Month">
+                      {(() => {
+                        if (!tempMonth) return "Select Month";
+                        const [y, m] = tempMonth.split('-');
+                        const d = new Date(parseInt(y), parseInt(m) - 1);
+                        return d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - i);
+                      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                      const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+                      return <SelectItem key={val} value={val}>{label}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <Select value={filterMember} onValueChange={(val) => setFilterMember(val as string)}>
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue placeholder="All Members" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Members</SelectItem>
-            {members.map(m => (
-              <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Category</span>
+                <Select value={tempCategory} onValueChange={(val) => setTempCategory(val as string)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Categories">
+                      {tempCategory === "ALL" ? "All Categories" : tempCategory}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Categories</SelectItem>
+                    {activeHousehold?.categories?.map((c: string) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <Select 
-          value={selectedMonth} 
-          onValueChange={(val) => {
-            setSelectedMonth(val as string);
-            setCurrentPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Select Month" />
-          </SelectTrigger>
-          <SelectContent>
-            {Array.from({ length: 24 }).map((_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-              const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-              return (
-                <SelectItem key={val} value={val}>{label}</SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Paid By</span>
+                <Select value={tempMember} onValueChange={(val) => setTempMember(val as string)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Members">
+                      {tempMember === "ALL" ? "All Members" : (members.find(m => m.userId === tempMember)?.userName || tempMember)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Members</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row sm:justify-between sm:space-x-2 gap-2 mt-4">
+              <Button type="button" variant="ghost" onClick={() => {
+                setTempCategory("ALL");
+                setTempMember("ALL");
+                setTempMonth(getISTMonthString());
+              }}>
+                Reset defaults
+              </Button>
+              <Button type="button" onClick={applyFilters}>Apply Filters</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200">
+          <span className="text-sm font-medium text-muted-foreground mr-1">Filters applied:</span>
+          {filterCategory !== "ALL" && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-normal">
+              {filterCategory}
+              <button onClick={() => { setFilterCategory("ALL"); setCurrentPage(1); }} className="hover:bg-muted rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {filterMember !== "ALL" && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-normal">
+              {members.find(m => m.userId === filterMember)?.userName || "Member"}
+              <button onClick={() => { setFilterMember("ALL"); setCurrentPage(1); }} className="hover:bg-muted rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {selectedMonth !== getISTMonthString() && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-normal">
+              {(() => {
+                const [y, m] = selectedMonth.split('-');
+                const d = new Date(parseInt(y), parseInt(m) - 1);
+                return d.toLocaleDateString('default', { month: 'short', year: 'numeric' });
+              })()}
+              <button onClick={() => { setSelectedMonth(getISTMonthString()); setCurrentPage(1); }} className="hover:bg-muted rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-xs hover:bg-destructive/10 hover:text-destructive">
+            Clear all
+          </Button>
+        </div>
+      )}
 
       {selectedIds.size > 0 && (
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-2">
