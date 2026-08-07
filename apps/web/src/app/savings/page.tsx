@@ -28,6 +28,7 @@ export default function SavingsPage() {
   ];
 
   const [selectedRangeValue, setSelectedRangeValue] = useState(RANGES[0].value);
+  const [viewMode, setViewMode] = useState<"individual" | "household">("individual");
 
   useEffect(() => {
     async function loadData() {
@@ -62,8 +63,14 @@ export default function SavingsPage() {
   const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
 
-  const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
-  const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  const mySpend = viewMode === "individual"
+    ? expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0)
+    : expenseTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+  const myIncome = viewMode === "individual"
+    ? incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0)
+    : incomeTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
   const mySavings = myIncome - mySpend;
   const savingsRate = myIncome > 0 ? (mySavings / myIncome) * 100 : 0;
   
@@ -81,9 +88,11 @@ export default function SavingsPage() {
     const myShare = tx.splits?.[currentUserId || ""] || 0;
     
     if (tx.transactionType === "INCOME") {
-      monthlyDataMap[monthKey].income += (myShare || (tx.paidBy === currentUserId ? tx.amount : 0));
+      monthlyDataMap[monthKey].income += viewMode === "individual" 
+        ? (myShare || (tx.paidBy === currentUserId ? tx.amount : 0)) 
+        : tx.amount;
     } else {
-      monthlyDataMap[monthKey].spend += myShare;
+      monthlyDataMap[monthKey].spend += viewMode === "individual" ? myShare : tx.amount;
     }
   });
 
@@ -134,9 +143,31 @@ export default function SavingsPage() {
             Track your cash flow and net savings.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex bg-muted/50 p-1 rounded-lg border">
+            <button
+              onClick={() => setViewMode("individual")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                viewMode === "individual"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              My Share
+            </button>
+            <button
+              onClick={() => setViewMode("household")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                viewMode === "household"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Household Total
+            </button>
+          </div>
           <select
-            className="flex h-10 w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             value={selectedRangeValue}
             onChange={(e) => setSelectedRangeValue(e.target.value)}
             disabled={isLoading}
@@ -171,7 +202,7 @@ export default function SavingsPage() {
                 <div className="lg:col-span-2 flex flex-col justify-center space-y-6">
                   <div className="inline-flex items-center gap-2 rounded-full border bg-background/50 px-3 py-1.5 text-sm font-medium w-fit backdrop-blur-sm">
                     <Landmark className="h-4 w-4 text-primary" />
-                    <span>Net Savings Vault</span>
+                    <span>{viewMode === "individual" ? "Net Savings Vault" : "Household Savings Vault"}</span>
                   </div>
                   
                   <div>
