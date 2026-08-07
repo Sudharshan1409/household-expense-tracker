@@ -11,7 +11,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MonthPicker } from "@/components/ui/month-picker";
 import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee, Tag, Scale } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -265,32 +265,11 @@ export default function ReportsPage() {
             <span className="ml-2 hidden sm:inline">PDF</span>
           </Button>
         </div>
-        <Select 
+        <MonthPicker 
           value={selectedMonth} 
-          onValueChange={(val) => setSelectedMonth(val as string)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select Month">
-              {(() => {
-                if (!selectedMonth) return "Select Month";
-                const [y, m] = selectedMonth.split('-');
-                const d = new Date(parseInt(y), parseInt(m) - 1);
-                return d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-              })()}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Array.from({ length: 24 }).map((_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-              const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-              return (
-                <SelectItem key={val} value={val}>{label}</SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+          onChange={(val) => setSelectedMonth(val)}
+          className="w-[180px]"
+        />
       </div>
 
       {isHouseholdLoading || isLoading ? (

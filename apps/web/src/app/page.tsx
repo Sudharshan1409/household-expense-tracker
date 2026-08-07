@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MonthPicker } from "@/components/ui/month-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Plus, IndianRupee, Home, Clock, Target } from "lucide-react";
@@ -170,32 +170,11 @@ export default function Dashboard() {
       </div>
 
       <div className="flex justify-end">
-        <Select 
+        <MonthPicker 
           value={selectedMonth} 
-          onValueChange={(val) => setSelectedMonth(val as string)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select Month">
-              {(() => {
-                if (!selectedMonth) return "Select Month";
-                const [y, m] = selectedMonth.split('-');
-                const d = new Date(parseInt(y), parseInt(m) - 1);
-                return d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-              })()}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Array.from({ length: 24 }).map((_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-              const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-              return (
-                <SelectItem key={val} value={val}>{label}</SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+          onChange={(val) => setSelectedMonth(val)}
+          className="w-[180px]"
+        />
       </div>
 
       <div className="space-y-4">

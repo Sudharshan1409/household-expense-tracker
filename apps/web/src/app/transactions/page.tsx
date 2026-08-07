@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MonthPicker } from "@/components/ui/month-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -306,27 +307,11 @@ export default function TransactionsPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <span className="text-sm font-medium">Month</span>
-                <Select value={tempMonth} onValueChange={(val) => setTempMonth(val as string)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Month">
-                      {(() => {
-                        if (!tempMonth) return "Select Month";
-                        const [y, m] = tempMonth.split('-');
-                        const d = new Date(parseInt(y), parseInt(m) - 1);
-                        return d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const d = new Date();
-                      d.setMonth(d.getMonth() - i);
-                      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                      const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-                      return <SelectItem key={val} value={val}>{label}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
+                <MonthPicker 
+                  value={tempMonth} 
+                  onChange={(val) => setTempMonth(val)}
+                  className="w-full"
+                />
               </div>
 
               <div className="grid gap-2">
