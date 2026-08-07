@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { KPICard } from "@/components/ui/kpi-card";
+import { Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Target, ShieldCheck, AlertTriangle, TrendingUp, Landmark } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getTransactionsFromDate } from "@/actions/transaction";
@@ -100,37 +101,99 @@ export default function SavingsPage() {
             <span className="text-sm text-muted-foreground">{transactions.length} transactions</span>
           </div>
           
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <KPICard
-              title="Total Income"
-              value={`₹${myIncome.toFixed(2)}`}
-              description="Money earned"
-            />
-            <KPICard
-              title="Total Spend"
-              value={`₹${mySpend.toFixed(2)}`}
-              description="Money spent"
-            />
-            <KPICard
-              title="Net Savings"
-              value={`₹${mySavings.toFixed(2)}`}
-              description="Income minus expenses"
-              trend={{ 
-                value: mySavings >= 0 ? "Positive Cash Flow" : "Negative Cash Flow", 
-                label: "status", 
-                isPositive: mySavings >= 0 
-              }}
-            />
-            <KPICard
-              title="Savings Rate"
-              value={`${savingsRate.toFixed(1)}%`}
-              description="Percentage of income saved"
-              trend={{ 
-                value: savingsRate > 20 ? "Excellent" : savingsRate > 0 ? "Good" : "Needs Attention", 
-                label: "rating", 
-                isPositive: savingsRate > 0 
-              }}
-            />
+          {/* Premium Unified Savings Card */}
+          <div className="relative overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm">
+            {/* Background decorative elements */}
+            <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl"></div>
+            <div className="absolute left-0 bottom-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-emerald-500/5 blur-3xl"></div>
+            
+            <div className="relative p-6 sm:p-10">
+              <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
+                
+                {/* Left Side: Main Savings Focus (Takes 2 cols on lg) */}
+                <div className="lg:col-span-2 flex flex-col justify-center space-y-6">
+                  <div className="inline-flex items-center gap-2 rounded-full border bg-background/50 px-3 py-1.5 text-sm font-medium w-fit backdrop-blur-sm">
+                    <Landmark className="h-4 w-4 text-primary" />
+                    <span>Net Savings Vault</span>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <h2 className="text-5xl font-black tracking-tighter">₹{mySavings.toFixed(2)}</h2>
+                    </div>
+                    <p className="mt-2 text-muted-foreground">
+                      Total money saved in this period
+                    </p>
+                  </div>
+
+                  <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${
+                    savingsRate > 20 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : 
+                    savingsRate > 0 ? "bg-amber-500/10 text-amber-600 border-amber-500/20" : 
+                    "bg-destructive/10 text-destructive border-destructive/20"
+                  }`}>
+                    {savingsRate > 20 ? (
+                      <ShieldCheck className="h-5 w-5" />
+                    ) : savingsRate > 0 ? (
+                      <Target className="h-5 w-5" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5" />
+                    )}
+                    <span>
+                      {savingsRate > 20 ? "Excellent Saving Habits" : 
+                       savingsRate > 0 ? "On Track, but can improve" : 
+                       "Negative Cash Flow - Needs Attention"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Side: Detailed Breakdown (Takes 3 cols on lg) */}
+                <div className="lg:col-span-3 grid gap-4 sm:grid-cols-3">
+                  
+                  {/* Savings Rate Card */}
+                  <div className="flex flex-col justify-between rounded-2xl bg-muted/30 border border-muted/50 p-5">
+                    <div className="flex items-center gap-2 text-primary">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <PiggyBank className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-semibold">Savings Rate</span>
+                    </div>
+                    <div className="mt-4">
+                      <div className="text-3xl font-bold tracking-tight">{savingsRate.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground mt-1">% of income saved</p>
+                    </div>
+                  </div>
+
+                  {/* Income Card */}
+                  <div className="flex flex-col justify-between rounded-2xl bg-muted/30 border border-muted/50 p-5">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <div className="p-2 rounded-lg bg-emerald-500/10">
+                        <ArrowDownRight className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-semibold">Total Income</span>
+                    </div>
+                    <div className="mt-4">
+                      <div className="text-2xl font-bold tracking-tight">₹{myIncome.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground mt-1">Money earned</p>
+                    </div>
+                  </div>
+
+                  {/* Spend Card */}
+                  <div className="flex flex-col justify-between rounded-2xl bg-muted/30 border border-muted/50 p-5">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <div className="p-2 rounded-lg bg-destructive/10">
+                        <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-semibold">Total Spend</span>
+                    </div>
+                    <div className="mt-4">
+                      <div className="text-2xl font-bold tracking-tight">₹{mySpend.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground mt-1">Money spent</p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
