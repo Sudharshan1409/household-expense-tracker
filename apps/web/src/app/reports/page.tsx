@@ -10,8 +10,8 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -145,13 +145,10 @@ export default function ReportsPage() {
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .map(([name, value]) => ({ name, value }));
 
-  // 2. Member Data (Who paid for MY expenses)
+  // 2. Member Data (Who paid total household expenses)
   const memberMap = expenseTxs.reduce((acc, tx) => {
     const mName = getMemberName(tx.paidBy);
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
-    if (myShare > 0) {
-      acc[mName] = (acc[mName] || 0) + myShare;
-    }
+    acc[mName] = (acc[mName] || 0) + tx.amount;
     return acc;
   }, {} as Record<string, number>);
   const memberData = Object.entries(memberMap)
@@ -247,27 +244,45 @@ export default function ReportsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <KPICard
-              title="Total Income"
-              value={`₹${myIncome.toFixed(2)}`}
-              description="Your recorded income"
-            />
-            <KPICard
-              title="Total Spend"
-              value={`₹${mySpend.toFixed(2)}`}
-              description="Your recorded expenses"
-            />
-            <KPICard
-              title="Net Savings"
-              value={`₹${mySavings.toFixed(2)}`}
-              description="Income minus expenses"
-              trend={{ 
-                value: mySavings >= 0 ? "Positive" : "Negative", 
-                label: "cash flow", 
-                isPositive: mySavings >= 0 
-              }}
-            />
+          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+              <div className="p-6 flex flex-col justify-center space-y-2">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                    <ArrowDownRight className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-medium">Total Income</span>
+                </div>
+                <div className="text-3xl font-bold tracking-tight">₹{myIncome.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Your recorded income</p>
+              </div>
+              
+              <div className="p-6 flex flex-col justify-center space-y-2">
+                <div className="flex items-center gap-2 text-destructive">
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-medium">Total Spend</span>
+                </div>
+                <div className="text-3xl font-bold tracking-tight">₹{mySpend.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Your recorded expenses</p>
+              </div>
+
+              <div className="p-6 flex flex-col justify-center space-y-2 bg-muted/20">
+                <div className="flex items-center gap-2 text-primary">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <IndianRupee className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-medium">Net Savings</span>
+                </div>
+                <div className="text-3xl font-bold tracking-tight">₹{mySavings.toFixed(2)}</div>
+                <div className="flex items-center gap-1.5 mt-1 text-xs">
+                  <span className={`inline-flex items-center font-medium ${mySavings >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                    {mySavings >= 0 ? "Positive" : "Negative"} cash flow
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -341,7 +356,7 @@ export default function ReportsPage() {
             </div>
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                <LineChart data={dailyData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis 
                     dataKey="date" 
@@ -357,9 +372,16 @@ export default function ReportsPage() {
                     tickFormatter={(val) => `₹${val}`}
                     dx={-10}
                   />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
-                  <Bar dataKey="amount" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#8b5cf6" 
+                    strokeWidth={3}
+                    dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }} 
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>

@@ -91,7 +91,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setSplitType("EQUAL");
       setPaidBy(currentUserId || "");
       setError("");
-      setTags(initialData?.tags || []);
+      setTags([]);
       setTagInput("");
       setReceiptFile(initialData?.file || null);
     }
@@ -374,21 +374,30 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 </Button>
               </div>
               
-              {/* Existing Tags Suggestions */}
-              {activeHousehold?.metadata?.tags && activeHousehold.metadata.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {activeHousehold.metadata.tags
-                    .filter((t: string) => !tags.includes(t))
-                    .map((t: string) => (
-                      <Badge 
-                        key={t} 
-                        variant="outline" 
-                        className="cursor-pointer hover:bg-muted text-xs font-normal"
-                        onClick={() => setTags([...tags, t])}
-                      >
-                        + #{t}
-                      </Badge>
-                  ))}
+              {/* Recommended Tags Suggestions */}
+              {Array.from(new Set([...(activeHousehold?.metadata?.tags || []), ...(initialData?.tags || [])]))
+                .filter((t: string) => !tags.includes(t)).length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <span className="text-primary">✨</span> Recommended Tags
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from(new Set([...(activeHousehold?.metadata?.tags || []), ...(initialData?.tags || [])]))
+                      .filter((t: string) => !tags.includes(t))
+                      .map((t: string) => {
+                        const isAiSuggested = initialData?.tags?.includes(t);
+                        return (
+                          <Badge 
+                            key={t} 
+                            variant="outline" 
+                            className={`cursor-pointer transition-colors text-xs font-normal border-dashed ${isAiSuggested ? "border-primary/50 text-primary hover:bg-primary/10" : "hover:bg-muted"}`}
+                            onClick={() => setTags([...tags, t])}
+                          >
+                            + #{t}
+                          </Badge>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
             </div>
