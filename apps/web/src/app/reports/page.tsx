@@ -10,8 +10,8 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
+import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee, Tag, Scale } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -22,6 +22,7 @@ const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'
 export default function ReportsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -102,6 +103,13 @@ export default function ReportsPage() {
           const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
           setTransactions(recentTx);
           
+          const [year, month] = selectedMonth.split("-").map(Number);
+          const prevMonth = month === 1 ? 12 : month - 1;
+          const prevYear = month === 1 ? year - 1 : year;
+          const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+          const prevTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, prevMonthString);
+          setPrevTransactions(prevTx);
+
           const mems = await getHouseholdMembers(token, activeHousehold.householdId);
           setMembers(mems);
         }
@@ -131,6 +139,20 @@ export default function ReportsPage() {
   const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
   const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
   const mySavings = myIncome - mySpend;
+  
+  // Month-over-Month logic
+  const prevExpenseTxs = prevTransactions.filter(tx => tx.transactionType !== "INCOME");
+  const prevIncomeTxs = prevTransactions.filter(tx => tx.transactionType === "INCOME");
+  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  const prevMyIncome = prevIncomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  
+  const mySpendDiff = prevMySpend > 0 ? ((mySpend - prevMySpend) / prevMySpend) * 100 : 0;
+  const myIncomeDiff = prevMyIncome > 0 ? ((myIncome - prevMyIncome) / prevMyIncome) * 100 : 0;
+
+  const incomeVsExpenseData = [
+    { name: 'Income', amount: myIncome, fill: '#10b981' },
+    { name: 'Expense', amount: mySpend, fill: '#ef4444' }
+  ];
   
   // 1. Category Data (Individual Share)
   const categoryMap = expenseTxs.reduce((acc, tx) => {
@@ -163,6 +185,22 @@ export default function ReportsPage() {
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
   });
   const dailyData = Object.entries(dailyMap).map(([date, amount]) => ({ date, amount }));
+
+  // 4. Tags Data (Individual Share)
+  const tagMap = expenseTxs.reduce((acc, tx) => {
+    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    if (myShare > 0 && tx.tags && tx.tags.length > 0) {
+      tx.tags.forEach((t: string) => {
+        acc[t] = (acc[t] || 0) + myShare;
+      });
+    }
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const tagData = Object.entries(tagMap)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
+    .slice(0, 10) // Top 10 tags
+    .map(([name, value]) => ({ name: `#${name}`, value }));
 
   // Custom Tooltip Formatter
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -254,7 +292,16 @@ export default function ReportsPage() {
                   <span className="text-sm font-medium">Total Income</span>
                 </div>
                 <div className="text-3xl font-bold tracking-tight">₹{myIncome.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Your recorded income</p>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {myIncomeDiff !== 0 ? (
+                    <span className={`inline-flex items-center font-medium ${myIncomeDiff >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                      {myIncomeDiff > 0 ? "+" : "-"}{Math.abs(myIncomeDiff).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="font-medium text-muted-foreground">+0%</span>
+                  )}
+                  <span className="text-muted-foreground">vs last month</span>
+                </div>
               </div>
               
               <div className="p-6 flex flex-col justify-center space-y-2">
@@ -265,7 +312,16 @@ export default function ReportsPage() {
                   <span className="text-sm font-medium">Total Spend</span>
                 </div>
                 <div className="text-3xl font-bold tracking-tight">₹{mySpend.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Your recorded expenses</p>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {mySpendDiff !== 0 ? (
+                    <span className={`inline-flex items-center font-medium ${mySpendDiff <= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                      {mySpendDiff > 0 ? "+" : "-"}{Math.abs(mySpendDiff).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="font-medium text-muted-foreground">+0%</span>
+                  )}
+                  <span className="text-muted-foreground">vs last month</span>
+                </div>
               </div>
 
               <div className="p-6 flex flex-col justify-center space-y-2 bg-muted/20">
@@ -383,6 +439,81 @@ export default function ReportsPage() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Income vs Expenses Bar Chart */}
+            <div className="rounded-xl border bg-card p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <Scale className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold tracking-tight">Income vs Expenses</h2>
+              </div>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={incomeVsExpenseData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} 
+                      dy={10} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                      tickFormatter={(val) => `₹${val}`}
+                      dx={-10}
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
+                    <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                      {incomeVsExpenseData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Top Tags Bar Chart */}
+            <div className="rounded-xl border bg-card p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <Tag className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold tracking-tight">Spending by Tags (Top 10)</h2>
+              </div>
+              <div className="h-[300px] w-full">
+                {tagData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                    <Tag className="h-8 w-8 opacity-20" />
+                    No tagged expenses found
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tagData} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+                      <XAxis 
+                        type="number"
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                        tickFormatter={(val) => `₹${val}`}
+                      />
+                      <YAxis 
+                        type="category"
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 12, fill: "var(--muted-foreground)", fontWeight: 500 }}
+                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
+                      <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
 
