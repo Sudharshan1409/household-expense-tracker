@@ -7,6 +7,7 @@ import { KPICard } from "@/components/ui/kpi-card";
 import { Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Target, ShieldCheck, AlertTriangle, TrendingUp, Landmark, CalendarDays, Award } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageLoader } from "@/components/ui/page-loader";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getTransactionsFromDate } from "@/actions/transaction";
 import { subMonths, startOfMonth } from "date-fns";
@@ -166,16 +167,20 @@ export default function SavingsPage() {
               Household Total
             </button>
           </div>
-          <select
-            className="flex h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            value={selectedRangeValue}
-            onChange={(e) => setSelectedRangeValue(e.target.value)}
+          <Select 
+            value={selectedRangeValue} 
+            onValueChange={(val) => setSelectedRangeValue(val as string)}
             disabled={isLoading}
           >
-            {RANGES.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Range" />
+            </SelectTrigger>
+            <SelectContent>
+              {RANGES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <HouseholdSwitcher />
         </div>
       </div>

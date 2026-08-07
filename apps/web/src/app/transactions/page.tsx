@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -247,38 +248,52 @@ export default function TransactionsPage() {
           />
         </div>
         
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
-        >
-          <option value="ALL">All Categories</option>
-          {activeHousehold?.categories?.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <Select value={filterCategory} onValueChange={(val) => setFilterCategory(val as string)}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Categories</SelectItem>
+            {activeHousehold?.categories?.map((c: string) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          value={filterMember}
-          onChange={(e) => setFilterMember(e.target.value)}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
-        >
-          <option value="ALL">All Members</option>
-          {members.map(m => (
-            <option key={m.userId} value={m.userId}>{m.userName}</option>
-          ))}
-        </select>
+        <Select value={filterMember} onValueChange={(val) => setFilterMember(val as string)}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="All Members" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Members</SelectItem>
+            {members.map(m => (
+              <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <input 
-          type="month" 
-          value={selectedMonth}
-          max={getISTMonthString()}
-          onChange={(e) => {
-            setSelectedMonth(e.target.value);
+        <Select 
+          value={selectedMonth} 
+          onValueChange={(val) => {
+            setSelectedMonth(val as string);
             setCurrentPage(1);
           }}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-[150px]"
-        />
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 24 }).map((_, i) => {
+              const d = new Date();
+              d.setMonth(d.getMonth() - i);
+              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+              return (
+                <SelectItem key={val} value={val}>{label}</SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       {selectedIds.size > 0 && (

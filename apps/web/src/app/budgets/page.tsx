@@ -9,6 +9,7 @@ import { Wallet, Target, AlertTriangle, Info, Edit2 } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget } from "@/actions/household";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -203,13 +204,25 @@ export default function BudgetsPage() {
       </div>
 
       <div className="flex justify-end">
-        <input 
-          type="month" 
-          value={selectedMonth}
-          max={getISTMonthString()}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        />
+        <Select 
+          value={selectedMonth} 
+          onValueChange={(val) => setSelectedMonth(val as string)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 24 }).map((_, i) => {
+              const d = new Date();
+              d.setMonth(d.getMonth() - i);
+              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+              return (
+                <SelectItem key={val} value={val}>{label}</SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
