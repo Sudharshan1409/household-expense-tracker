@@ -49,7 +49,7 @@ export default function BudgetsPage() {
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
 
-  const { data: transactions = [], isLoading: isTxLoading } = useAuthSWR(
+  const { data: transactions = [], isLoading: isTxLoading, mutate: mutateTx } = useAuthSWR(
     getRecentTransactions,
     activeHousehold?.householdId,
     [1000, selectedMonth]
@@ -489,12 +489,12 @@ export default function BudgetsPage() {
           transaction={selectedTransaction}
           householdId={activeHousehold?.householdId || ""}
           onDelete={() => {
-            setTransactions(prev => prev.filter(t => t.SK !== selectedTransaction.SK));
+            mutateTx((prev: any[] | undefined) => prev ? prev.filter(t => t.SK !== selectedTransaction.SK) : []);
             setSelectedTransaction(null);
           }}
           onUpdate={(updatedTx) => {
-            setTransactions(prev => prev.map(t => t.SK === updatedTx.SK ? updatedTx : t));
-            setSelectedTransaction(null);
+            setSelectedTransaction(updatedTx);
+            mutateTx((prev: any[] | undefined) => prev ? prev.map(t => t.id === updatedTx.id ? updatedTx : t) : []);
           }}
         />
       )}
