@@ -20,6 +20,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fetchAuthSession } from "aws-amplify/auth";
 
+const getDetailedHouseholds = async (token: string) => {
+  const memberships = await getUserHouseholds(token);
+  return Promise.all(
+    memberships.map(async (m: any) => {
+      const meta = await getHousehold(token, m.householdId);
+      return { ...m, name: meta?.name || "Unknown Household", inviteCode: meta?.inviteCode || "UNKNOWN" };
+    })
+  );
+};
+
 export default function SettingsPage() {
   // State for the modal
   const [activeHousehold, setActiveHousehold] = useState<any>(null);
@@ -27,16 +37,6 @@ export default function SettingsPage() {
   
   const [pendingLeave, setPendingLeave] = useState<any>(null);
   const [pendingDelete, setPendingDelete] = useState<any>(null);
-
-  const getDetailedHouseholds = async (token: string) => {
-    const memberships = await getUserHouseholds(token);
-    return Promise.all(
-      memberships.map(async (m: any) => {
-        const meta = await getHousehold(token, m.householdId);
-        return { ...m, name: meta?.name || "Unknown Household", inviteCode: meta?.inviteCode || "UNKNOWN" };
-      })
-    );
-  };
 
   const { data: households = [], isLoading, mutate: mutateHouseholds } = useAuthSWRGlobal(
     getDetailedHouseholds
