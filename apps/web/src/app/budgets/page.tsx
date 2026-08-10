@@ -464,8 +464,10 @@ export default function BudgetsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">₹{tx.amount.toFixed(2)}</p>
-                      {tx.splits?.[currentUserId || ""] > 0 && (
+                      {tx.splits?.[currentUserId || ""] > 0 ? (
                         <p className="text-xs text-muted-foreground">My share: ₹{tx.splits[currentUserId || ""].toFixed(2)}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No share</p>
                       )}
                     </div>
                   </div>
