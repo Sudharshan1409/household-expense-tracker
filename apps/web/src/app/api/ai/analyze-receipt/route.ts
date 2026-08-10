@@ -20,7 +20,7 @@ Extract the expense details and return ONLY a valid JSON object matching this ex
   "amount": number (the numeric amount paid, e.g. 1450.50. Remove all currency symbols and commas. If there are multiple numbers, choose the final grand total or debited amount),
   "description": string (the merchant name or a concise summary of the transaction, e.g. 'DMart Superstore', 'Shell Petrol', 'Swiggy Food'),
   "category": string (choose the single best matching category from this list: ${JSON.stringify(categories)}. If none match accurately, select the closest one or default to 'General'),
-  "date": string (the transaction date in YYYY-MM-DD format if clearly visible on the receipt/screenshot, otherwise return an empty string ""),
+  "date": string (the transaction date and time in YYYY-MM-DDThh:mm format if clearly visible on the receipt/screenshot. If only date is visible without time, assume 12:00. Otherwise return an empty string ""),
   "tags": string[] (an array of 2-4 lowercase descriptive keywords without '#' symbols, e.g. ["grocery", "dmart", "essential"])
 }
 Do not return any extra markdown styling, code block backticks, or explanation. Just the raw JSON string.`;

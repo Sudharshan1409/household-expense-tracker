@@ -80,7 +80,9 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setAmount(initialData?.amount !== undefined && initialData?.amount !== "" ? String(initialData.amount) : "");
       setDescription(initialData?.description || "");
       setCategory(initialData?.category || "Other");
-      if (initialData?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialData.date)) {
+      if (initialData?.date && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(initialData.date)) {
+        setDatetime(initialData.date);
+      } else if (initialData?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialData.date)) {
         setDatetime(`${initialData.date}T12:00`);
       } else {
         const d = new Date();
