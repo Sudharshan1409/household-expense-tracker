@@ -49,7 +49,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     
     const data = [];
     
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = 1; day <= currentDay; day++) {
       // Find expenses for this specific day (current month)
       const daySpend = expenseTxs.filter((t) => {
         const d = new Date(t.date || t.createdAt);
@@ -62,10 +62,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
         return d.getDate() === day;
       }).reduce((sum, t) => sum + getSpendForTx(t), 0);
 
-      if (day <= currentDay) {
-        cumulativeSpend += daySpend;
-      }
-      
+      cumulativeSpend += daySpend;
       prevCumulativeSpend += prevDaySpend;
       
       let ghostSpend = null;
@@ -75,14 +72,14 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
         ghostSpend = prevCumulativeSpend;
         label = "Vs. Last Month";
       } else if (activeBudget) {
-        // Ideal pace
+        // Ideal pace (divide by total days in month, not currentDay, so it targets the correct month-end goal)
         ghostSpend = (activeBudget / daysInMonth) * day;
         label = "Vs. Ideal Pace";
       }
       
       data.push({
         day,
-        currentSpend: day <= currentDay ? cumulativeSpend : null,
+        currentSpend: cumulativeSpend,
         ghostSpend: ghostSpend,
         label
       });
