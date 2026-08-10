@@ -13,6 +13,7 @@ import { MonthPicker } from "@/components/ui/month-picker";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
+import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
@@ -26,6 +27,7 @@ export default function BudgetsPage() {
   const [isEditingOverall, setIsEditingOverall] = useState(false);
   const [overallBudget, setOverallBudget] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
   // My Budget State
   const [isEditingMyBudget, setIsEditingMyBudget] = useState(false);
@@ -451,7 +453,11 @@ export default function BudgetsPage() {
                 <p className="text-center text-muted-foreground py-8">No transactions for this category in the selected month.</p>
               ) : (
                 transactions.filter(tx => tx.category === selectedCategory).map(tx => (
-                  <div key={tx.SK} className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div 
+                    key={tx.SK} 
+                    className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedTransaction(tx)}
+                  >
                     <div>
                       <p className="font-medium">{tx.description}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(tx.date || tx.createdAt), "dd MMM yyyy")}</p>
@@ -468,6 +474,24 @@ export default function BudgetsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Transaction Details Modal */}
+      {selectedTransaction && (
+        <TransactionDetailsModal
+          isOpen={!!selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+          transaction={selectedTransaction}
+          householdId={activeHousehold?.householdId || ""}
+          onDelete={() => {
+            setTransactions(prev => prev.filter(t => t.SK !== selectedTransaction.SK));
+            setSelectedTransaction(null);
+          }}
+          onUpdate={(updatedTx) => {
+            setTransactions(prev => prev.map(t => t.SK === updatedTx.SK ? updatedTx : t));
+            setSelectedTransaction(null);
+          }}
+        />
       )}
     </div>
   );
