@@ -360,7 +360,7 @@ export default function Dashboard() {
             }}
             householdId={activeHousehold.householdId}
             onSuccess={() => {
-              loadTransactions();
+              mutateTx();
               setScannedData(null);
             }}
             initialData={scannedData}
@@ -370,10 +370,10 @@ export default function Dashboard() {
             onClose={() => setSelectedTx(null)}
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
-            onSuccess={handleTransactionSuccess}
+            onDelete={handleTransactionSuccess}
             onUpdate={(updatedTx) => {
               setSelectedTx(updatedTx);
-              setTransactions(prev => prev.map(t => t.id === updatedTx.id ? updatedTx : t));
+              mutateTx((prev: any[] | undefined) => prev ? prev.map(t => t.id === updatedTx.id ? updatedTx : t) : []);
             }}
           />
           <ManageHouseholdModal
