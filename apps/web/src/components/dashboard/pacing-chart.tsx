@@ -119,24 +119,24 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
         <div className="h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis 
                 dataKey="day" 
                 tickLine={false} 
                 axisLine={false}
-                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                 tickFormatter={(val) => `${val}`}
               />
               <YAxis 
                 tickLine={false} 
                 axisLine={false}
-                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                 tickFormatter={(val) => `₹${val > 1000 ? (val/1000).toFixed(0) + 'k' : val}`}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))", 
-                  borderColor: "hsl(var(--border))",
+                  backgroundColor: "var(--card)", 
+                  borderColor: "var(--border)",
                   borderRadius: "8px",
                   fontSize: "12px",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
@@ -151,7 +151,7 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
                 <Line 
                   type="monotone" 
                   dataKey="ghostSpend" 
-                  stroke="hsl(var(--muted-foreground))" 
+                  stroke="var(--muted-foreground)" 
                   strokeWidth={2} 
                   strokeDasharray="4 4"
                   dot={false}
@@ -162,10 +162,10 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
               <Line 
                 type="monotone" 
                 dataKey="currentSpend" 
-                stroke={isLosing ? "hsl(var(--destructive))" : "hsl(var(--primary))"} 
+                stroke={isLosing ? "var(--destructive)" : "var(--primary)"} 
                 strokeWidth={3}
                 dot={false}
-                activeDot={{ r: 6, fill: isLosing ? "hsl(var(--destructive))" : "hsl(var(--primary))" }}
+                activeDot={{ r: 6, fill: isLosing ? "var(--destructive)" : "var(--primary)" }}
                 animationDuration={1500}
               />
             </LineChart>
