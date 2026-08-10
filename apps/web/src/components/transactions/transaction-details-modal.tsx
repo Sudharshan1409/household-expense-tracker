@@ -12,6 +12,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,6 +127,20 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       const token = session.tokens?.idToken?.toString();
       if (token) {
         await deleteTransaction(token, householdId, transaction.SK);
+        
+        // Delete poof effect
+        confetti({
+          particleCount: 40,
+          spread: 80,
+          origin: { y: 0.8 },
+          colors: ['#ef4444', '#9ca3af', '#6b7280'], // red and grays
+          startVelocity: 25,
+          gravity: 1.2,
+          scalar: 0.7,
+          ticks: 150,
+          shapes: ['circle', 'square']
+        });
+
         if (onDelete) onDelete();
         onClose();
       }
@@ -148,7 +163,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-xl border bg-card shadow-lg sm:rounded-2xl relative slide-in-from-bottom-4 duration-300 flex flex-col">
+      <div className="w-full max-w-md rounded-xl border bg-card shadow-lg sm:rounded-2xl relative animate-spring-in flex flex-col">
         <button 
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors z-10"
@@ -362,7 +377,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
       
       {viewerUrl && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl h-[90vh] flex flex-col bg-card rounded-2xl border shadow-2xl relative overflow-hidden slide-in-from-bottom-4 duration-300">
+          <div className="w-full max-w-4xl h-[90vh] flex flex-col bg-card rounded-2xl border shadow-2xl relative overflow-hidden animate-spring-in">
             <div className="flex items-center justify-between p-4 border-b bg-muted/30">
               <h3 className="font-semibold flex items-center gap-2"><Receipt className="h-5 w-5" /> Receipt Viewer</h3>
               <button 

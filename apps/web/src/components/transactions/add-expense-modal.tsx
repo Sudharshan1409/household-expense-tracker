@@ -12,6 +12,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import confetti from "canvas-confetti";
 
 export interface ScannedReceiptData {
   amount?: number | string;
@@ -183,6 +184,13 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         tags,
       });
 
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#8b5cf6', '#10b981', '#f59e0b']
+      });
+
       onSuccess();
       onClose();
       // Reset form
@@ -200,7 +208,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg sm:rounded-2xl relative slide-in-from-bottom-4 duration-300 max-h-[90vh] flex flex-col">
+      <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg sm:rounded-2xl relative animate-spring-in max-h-[90vh] flex flex-col">
         <button 
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors z-10"

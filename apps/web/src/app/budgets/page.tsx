@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
@@ -265,9 +266,11 @@ export default function BudgetsPage() {
                 <span className="text-muted-foreground">{formatPercentage(totalHouseholdSpend, overallBudgetNum)}</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                <div 
-                  className={`h-full transition-all duration-1000 ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
-                  style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(overallProgress, 100)}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className={`h-full rounded-full ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
                 />
               </div>
             </div>
@@ -323,9 +326,11 @@ export default function BudgetsPage() {
                 <span className="text-muted-foreground">{formatPercentage(totalMySpend, myBudgetNum)}</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                <div 
-                  className={`h-full transition-all duration-1000 ${myProgress > 100 ? 'bg-destructive' : myProgress > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                  style={{ width: `${Math.min(myProgress, 100)}%` }}
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(myProgress, 100)}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className={`h-full rounded-full ${myProgress > 100 ? 'bg-destructive' : myProgress > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
                 />
               </div>
             </div>
@@ -419,9 +424,11 @@ export default function BudgetsPage() {
                       
                       {hasBudget ? (
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div 
-                            className={`h-full transition-all duration-500 ${isOver ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(progress, 100)}%` }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className={`h-full rounded-full ${isOver ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
                           />
                         </div>
                       ) : (

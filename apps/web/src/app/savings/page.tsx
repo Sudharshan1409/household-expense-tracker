@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { KPICard } from "@/components/ui/kpi-card";
@@ -11,6 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getTransactionsFromDate } from "@/actions/transaction";
 import { subMonths, startOfMonth } from "date-fns";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+
+const formatINR = (val: number) => {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(val);
+};
 
 export default function SavingsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading } = useHousehold();
@@ -190,14 +200,37 @@ export default function SavingsPage() {
       {isLoading ? (
         <PageLoader title="Fetching range data..." />
       ) : (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b pb-2">
+        <motion.div 
+          className="space-y-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.1 }
+            }
+          }}
+        >
+          <motion.div 
+            className="flex items-center justify-between border-b pb-2"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+            }}
+          >
             <h2 className="text-xl font-semibold tracking-tight">{currentRangeLabel}</h2>
             <span className="text-sm text-muted-foreground">{transactions.length} transactions</span>
-          </div>
+          </motion.div>
           
           {/* Premium Unified Savings Card */}
-          <div className="relative overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm">
+          <motion.div 
+            className="relative overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm"
+            variants={{
+              hidden: { opacity: 0, y: 20, scale: 0.98 },
+              visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
+            }}
+          >
             {/* Background decorative elements */}
             <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl"></div>
             <div className="absolute left-0 bottom-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-emerald-500/5 blur-3xl"></div>
@@ -214,7 +247,9 @@ export default function SavingsPage() {
                   
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <h2 className="text-5xl font-black tracking-tighter">₹{mySavings.toFixed(2)}</h2>
+                      <h2 className="text-5xl font-black tracking-tighter">
+                        <AnimatedNumber value={mySavings} format={formatINR} />
+                      </h2>
                     </div>
                     <p className="mt-2 text-muted-foreground">
                       Total money saved in this period
@@ -253,7 +288,9 @@ export default function SavingsPage() {
                       <span className="text-sm font-semibold">Savings Rate</span>
                     </div>
                     <div className="mt-4">
-                      <div className="text-3xl font-bold tracking-tight">{savingsRate.toFixed(1)}%</div>
+                      <div className="text-3xl font-bold tracking-tight">
+                        <AnimatedNumber value={savingsRate} format={(v) => `${v.toFixed(1)}%`} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">% of income saved</p>
                     </div>
                   </div>
@@ -267,7 +304,9 @@ export default function SavingsPage() {
                       <span className="text-sm font-semibold">Total Income</span>
                     </div>
                     <div className="mt-4">
-                      <div className="text-2xl font-bold tracking-tight">₹{myIncome.toFixed(2)}</div>
+                      <div className="text-2xl font-bold tracking-tight">
+                        <AnimatedNumber value={myIncome} format={formatINR} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">Money earned</p>
                     </div>
                   </div>
@@ -281,18 +320,26 @@ export default function SavingsPage() {
                       <span className="text-sm font-semibold">Total Spend</span>
                     </div>
                     <div className="mt-4">
-                      <div className="text-2xl font-bold tracking-tight">₹{mySpend.toFixed(2)}</div>
+                      <div className="text-2xl font-bold tracking-tight">
+                        <AnimatedNumber value={mySpend} format={formatINR} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">Money spent</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           <div className="grid gap-6 md:grid-cols-3">
             {/* Savings Growth Over Time */}
-            <div className="rounded-xl border bg-card p-6 shadow-sm md:col-span-2">
+            <motion.div 
+              className="rounded-xl border bg-card p-6 shadow-sm md:col-span-2"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+              }}
+            >
               <div className="flex items-center gap-2 mb-6">
                 <TrendingUp className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold tracking-tight">Savings Growth Over Time</h2>
@@ -333,13 +380,19 @@ export default function SavingsPage() {
                   </ResponsiveContainer>
                 )}
               </div>
-            </div>
+            </motion.div>
 
             {/* Right Column: Projections & Goals */}
             <div className="flex flex-col gap-6">
               
               {/* Projected Annual Savings */}
-              <div className="rounded-xl border bg-card p-6 shadow-sm flex flex-col justify-center relative overflow-hidden">
+              <motion.div 
+                className="rounded-xl border bg-card p-6 shadow-sm flex flex-col justify-center relative overflow-hidden"
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                }}
+              >
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                   <CalendarDays className="h-24 w-24" />
                 </div>
@@ -349,16 +402,22 @@ export default function SavingsPage() {
                 </div>
                 <div className="relative z-10">
                   <div className="text-4xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
-                    ₹{projectedAnnualSavings.toFixed(0)}
+                    <AnimatedNumber value={projectedAnnualSavings} format={formatINR} />
                   </div>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                     Based on your current habits, this is how much you are on track to save in a full year.
                   </p>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Savings Goal Tracker */}
-              <div className="rounded-xl border bg-card p-6 shadow-sm flex-1 flex flex-col justify-center">
+              <motion.div 
+                className="rounded-xl border bg-card p-6 shadow-sm flex-1 flex flex-col justify-center"
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                }}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Award className="h-5 w-5 text-amber-500" />
@@ -371,9 +430,11 @@ export default function SavingsPage() {
                 
                 <div className="space-y-3">
                   <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
-                    <div 
-                      className="h-full bg-emerald-500 transition-all duration-500 ease-in-out" 
-                      style={{ width: `${goalProgress}%` }}
+                    <motion.div 
+                      className="h-full bg-emerald-500 rounded-full" 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${goalProgress}%` }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -388,11 +449,11 @@ export default function SavingsPage() {
                 <p className="text-xs text-muted-foreground mt-4">
                   You are tracking towards your ₹5 Lakh savings milestone. Keep it up!
                 </p>
-              </div>
+              </motion.div>
 
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

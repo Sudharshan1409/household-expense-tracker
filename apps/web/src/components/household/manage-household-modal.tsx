@@ -176,7 +176,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-xl border bg-card shadow-lg sm:rounded-2xl relative slide-in-from-bottom-4 duration-300 flex flex-col max-h-[85vh]">
+      <div className="w-full max-w-lg rounded-xl border bg-card shadow-lg sm:rounded-2xl relative animate-spring-in flex flex-col max-h-[85vh]">
         <button 
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors z-10"

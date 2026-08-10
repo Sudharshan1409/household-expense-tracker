@@ -153,8 +153,8 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg relative flex flex-col max-h-[90vh] animate-spring-in">
         <button 
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors z-10"

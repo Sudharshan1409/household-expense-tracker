@@ -12,6 +12,8 @@ import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
+import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-animation";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -161,10 +163,11 @@ export default function Dashboard() {
               setScannedData(null);
               setIsModalOpen(true);
             }}
-            className="hidden sm:flex ml-2"
+            className="hidden sm:flex ml-2 group relative overflow-hidden"
           >
-            <IndianRupee className="mr-2 h-4 w-4" />
-            Add Expense
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+            <IndianRupee className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 relative z-10" />
+            <span className="relative z-10">Add Expense</span>
           </Button>
         </div>
       </div>
@@ -179,7 +182,7 @@ export default function Dashboard() {
 
       <div className="space-y-4">
         {/* Hero Banner Card */}
-        <div className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+        <div className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
           <div className="p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -197,7 +200,7 @@ export default function Dashboard() {
 
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
               <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {formatINR(totalSpend)}
+                <AnimatedNumber value={totalSpend} format={formatINR} />
               </div>
               <div className="flex items-center gap-1.5 text-xs">
                 {spendDiff !== 0 ? (
@@ -215,7 +218,9 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-primary" />
                 <span className="text-muted-foreground">Your Share:</span>
-                <span className="font-bold text-foreground">{formatINR(mySpend)}</span>
+                <span className="font-bold text-foreground">
+                  <AnimatedNumber value={mySpend} format={formatINR} />
+                </span>
                 {totalSpend > 0 && (
                   <span className="text-muted-foreground">({Math.round((mySpend / totalSpend) * 100)}% of total)</span>
                 )}
@@ -236,27 +241,29 @@ export default function Dashboard() {
 
         {/* Compact 2-Column Row */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2">
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">Daily Avg</span>
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
             </div>
             <div>
-              <div className="text-lg sm:text-2xl font-bold">{formatINR(avgDailySpend)}</div>
+              <div className="text-lg sm:text-2xl font-bold">
+                <AnimatedNumber value={avgDailySpend} format={formatINR} />
+              </div>
               <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                 Based on {currentDay} day{currentDay === 1 ? "" : "s"}
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2">
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">Budget Left</span>
               <Target className="h-4 w-4 text-muted-foreground shrink-0" />
             </div>
             <div>
               <div className={`text-lg sm:text-2xl font-bold ${budgetRemaining < 0 ? "text-destructive" : ""}`}>
-                {myBudget ? formatINR(budgetRemaining) : "Not set"}
+                {myBudget ? <AnimatedNumber value={budgetRemaining} format={formatINR} /> : "Not set"}
               </div>
               <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 truncate">
                 {myBudget ? (
@@ -286,9 +293,9 @@ export default function Dashboard() {
                   action={<Button onClick={() => setIsModalOpen(true)}>Add your first expense</Button>}
                 />
               ) : (
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <StaggerContainer className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {transactions.slice(0, 50).map((tx) => (
-                    <div 
+                    <StaggerItem 
                       key={tx.id} 
                       className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-muted/30 p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
                       onClick={() => setSelectedTx(tx)}
@@ -304,9 +311,9 @@ export default function Dashboard() {
                           {tx.transactionType === "INCOME" ? "+" : ""}₹{tx.amount.toFixed(2)}
                         </div>
                       </div>
-                    </div>
+                    </StaggerItem>
                   ))}
-                </div>
+                </StaggerContainer>
               )}
             </div>
           </div>
@@ -322,9 +329,9 @@ export default function Dashboard() {
                   description={`No high-value expenses found for ${selectedMonth}.`}
                 />
               ) : (
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <StaggerContainer className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {topExpenses.map((tx, idx) => (
-                    <div 
+                    <StaggerItem 
                       key={tx.id} 
                       className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-muted/30 p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
                       onClick={() => setSelectedTx(tx)}
@@ -341,9 +348,9 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="font-semibold">₹{tx.amount.toFixed(2)}</div>
-                    </div>
+                    </StaggerItem>
                   ))}
-                </div>
+                </StaggerContainer>
               )}
             </div>
           </div>
@@ -397,10 +404,12 @@ export default function Dashboard() {
                 setScannedData(null);
                 setIsModalOpen(true);
               }}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 font-bold text-primary-foreground shadow-xl hover:bg-primary/90 active:scale-95 transition-all"
+              className="group flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 font-bold text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:shadow-[0_0_30px_rgba(var(--primary),0.6)] active:scale-95 transition-all duration-300 relative overflow-hidden"
             >
-              <IndianRupee className="h-5 w-5" />
-              <span>Add Expense</span>
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+              <div className="absolute inset-0 animate-ping opacity-20 bg-white rounded-2xl" />
+              <IndianRupee className="h-5 w-5 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 relative z-10" />
+              <span className="relative z-10">Add Expense</span>
             </button>
           </div>
         </>

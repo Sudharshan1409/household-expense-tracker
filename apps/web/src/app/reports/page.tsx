@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
@@ -12,6 +13,7 @@ import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { MonthPicker } from "@/components/ui/month-picker";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee, Tag, Scale } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -281,16 +283,24 @@ export default function ReportsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="rounded-2xl border bg-card text-card-foreground shadow-sm overflow-hidden"
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
-              <div className="p-6 flex flex-col justify-center space-y-2">
+              <div className="p-6 flex flex-col justify-center space-y-2 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                     <ArrowDownRight className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-medium">Total Income</span>
                 </div>
-                <div className="text-3xl font-bold tracking-tight">₹{myIncome.toFixed(2)}</div>
+                <div className="text-3xl font-bold tracking-tight flex items-center">
+                  <span>₹</span><AnimatedNumber value={myIncome} />
+                </div>
                 <div className="flex items-center gap-1.5 text-xs">
                   {myIncomeDiff !== 0 ? (
                     <span className={`inline-flex items-center font-medium ${myIncomeDiff >= 0 ? "text-emerald-500" : "text-destructive"}`}>
@@ -303,14 +313,16 @@ export default function ReportsPage() {
                 </div>
               </div>
               
-              <div className="p-6 flex flex-col justify-center space-y-2">
+              <div className="p-6 flex flex-col justify-center space-y-2 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-2 text-destructive">
                   <div className="p-2 bg-destructive/10 rounded-lg">
                     <ArrowUpRight className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-medium">Total Spend</span>
                 </div>
-                <div className="text-3xl font-bold tracking-tight">₹{mySpend.toFixed(2)}</div>
+                <div className="text-3xl font-bold tracking-tight flex items-center">
+                  <span>₹</span><AnimatedNumber value={mySpend} />
+                </div>
                 <div className="flex items-center gap-1.5 text-xs">
                   {mySpendDiff !== 0 ? (
                     <span className={`inline-flex items-center font-medium ${mySpendDiff <= 0 ? "text-emerald-500" : "text-destructive"}`}>
@@ -323,14 +335,16 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="p-6 flex flex-col justify-center space-y-2 bg-muted/20">
+              <div className="p-6 flex flex-col justify-center space-y-2 bg-muted/20 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-2 text-primary">
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <IndianRupee className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-medium">Net Savings</span>
                 </div>
-                <div className="text-3xl font-bold tracking-tight">₹{mySavings.toFixed(2)}</div>
+                <div className="text-3xl font-bold tracking-tight flex items-center">
+                  <span>₹</span><AnimatedNumber value={mySavings} />
+                </div>
                 <div className="flex items-center gap-1.5 mt-1 text-xs">
                   <span className={`inline-flex items-center font-medium ${mySavings >= 0 ? "text-emerald-500" : "text-destructive"}`}>
                     {mySavings >= 0 ? "Positive" : "Negative"} cash flow
@@ -338,9 +352,15 @@ export default function ReportsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+            className="grid gap-6 md:grid-cols-2"
+          >
             
             {/* Category Pie Chart */}
             <div className="rounded-xl border bg-card p-6 shadow-sm flex flex-col items-center">
@@ -360,6 +380,9 @@ export default function ReportsPage() {
                       paddingAngle={5}
                       dataKey="value"
                       stroke="none"
+                      isAnimationActive={true}
+                      animationBegin={100}
+                      animationDuration={1200}
                     >
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -390,6 +413,9 @@ export default function ReportsPage() {
                       paddingAngle={5}
                       dataKey="value"
                       stroke="none"
+                      isAnimationActive={true}
+                      animationBegin={300}
+                      animationDuration={1200}
                     >
                       {memberData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
@@ -401,10 +427,16 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Daily Trend Bar Chart */}
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+            className="rounded-xl border bg-card p-6 shadow-sm"
+          >
             <div className="flex items-center gap-2 mb-6">
               <Calendar className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-semibold tracking-tight">Daily Spending Trend</h2>
@@ -435,13 +467,22 @@ export default function ReportsPage() {
                     strokeWidth={3}
                     dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6 }} 
+                    isAnimationActive={true}
+                    animationBegin={500}
+                    animationDuration={1500}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="grid gap-6 md:grid-cols-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
+            className="grid gap-6 md:grid-cols-2"
+          >
             {/* Income vs Expenses Bar Chart */}
             <div className="rounded-xl border bg-card p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
@@ -467,7 +508,7 @@ export default function ReportsPage() {
                       dx={-10}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
-                    <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="amount" radius={[4, 4, 0, 0]} isAnimationActive={true} animationBegin={700} animationDuration={1000}>
                       {incomeVsExpenseData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -508,13 +549,13 @@ export default function ReportsPage() {
                         tick={{ fontSize: 12, fill: "var(--muted-foreground)", fontWeight: 500 }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
-                      <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={24} />
+                      <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={24} isAnimationActive={true} animationBegin={900} animationDuration={1000} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
         </div>
       )}
