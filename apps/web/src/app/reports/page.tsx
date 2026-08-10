@@ -8,7 +8,7 @@ import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { KPICard } from "@/components/ui/kpi-card";
 import { PageLoader } from "@/components/ui/page-loader";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers } from "@/actions/household";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
@@ -24,10 +24,6 @@ const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'
 
 export default function ReportsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   
   const getISTMonthString = () => {
     const now = new Date();
@@ -95,35 +91,29 @@ export default function ReportsPage() {
     doc.save(`transactions_${selectedMonth}.pdf`);
   };
 
-  useEffect(() => {
-    async function loadData() {
-      if (!activeHousehold?.householdId) return;
-      setIsLoading(true);
-      try {
-        const session = await fetchAuthSession();
-        const token = session.tokens?.idToken?.toString();
-        if (token) {
-          const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
-          setTransactions(recentTx);
-          
-          const [year, month] = selectedMonth.split("-").map(Number);
-          const prevMonth = month === 1 ? 12 : month - 1;
-          const prevYear = month === 1 ? year - 1 : year;
-          const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-          const prevTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, prevMonthString);
-          setPrevTransactions(prevTx);
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 
-          const mems = await getHouseholdMembers(token, activeHousehold.householdId);
-          setMembers(mems);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, [activeHousehold?.householdId, selectedMonth]);
+  const { data: transactions = [], isLoading: isTxLoading } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, selectedMonth]
+  );
+
+  const { data: prevTransactions = [] } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, prevMonthString]
+  );
+
+  const { data: members = [], isLoading: isMembersLoading } = useAuthSWR(
+    getHouseholdMembers,
+    activeHousehold?.householdId
+  );
+
+  const isLoading = isTxLoading || isMembersLoading;
 
   const getMemberName = (id: string) => {
     if (id === currentUserId) return "You";

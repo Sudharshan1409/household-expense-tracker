@@ -7,7 +7,7 @@ import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Wallet, Target, AlertTriangle, Info, Edit2, X } from "lucide-react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget } from "@/actions/household";
 import { MonthPicker } from "@/components/ui/month-picker";
@@ -15,18 +15,19 @@ import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>({});
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   
   // Overall Budget State
   const [isEditingOverall, setIsEditingOverall] = useState(false);
-  const [overallBudget, setOverallBudget] = useState("");
+  const [overallBudget, setOverallBudget] = useState("50000");
+  
+  // Category Budget State
+  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
@@ -48,38 +49,33 @@ export default function BudgetsPage() {
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
 
-  useEffect(() => {
-    async function loadData() {
-      if (!activeHousehold?.householdId || !currentUserId) return;
-      setIsLoading(true);
-      try {
-        const session = await fetchAuthSession();
-        const token = session.tokens?.idToken?.toString();
-        if (token) {
-          // Set overall budget from context
-          setOverallBudget(activeHousehold.overallBudget?.toString() || "50000");
+  const { data: transactions = [], isLoading: isTxLoading } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, selectedMonth]
+  );
 
-          // Fetch transactions for actuals
-          const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
-          setTransactions(recentTx);
-          
-          // Fetch member record for individual category budgets
-          const mems = await getHouseholdMembers(token, activeHousehold.householdId);
-          const me = mems.find(m => m.userId === currentUserId);
-          if (me?.categoryBudgets) {
-            setCategoryBudgets(me.categoryBudgets);
-          } else {
-            setCategoryBudgets({});
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+  const { data: mems = [], isLoading: isMemsLoading } = useAuthSWR(
+    getHouseholdMembers,
+    activeHousehold?.householdId
+  );
+
+  const isLoading = isTxLoading || isMemsLoading;
+
+  useEffect(() => {
+    // Set overall budget from context
+    setOverallBudget(activeHousehold?.overallBudget?.toString() || "50000");
+
+    // Sync individual category budgets
+    if (mems && currentUserId) {
+      const me = mems.find((m: any) => m.userId === currentUserId);
+      if (me?.categoryBudgets) {
+        setCategoryBudgets(me.categoryBudgets);
+      } else {
+        setCategoryBudgets({});
       }
     }
-    loadData();
-  }, [activeHousehold?.householdId, activeHousehold?.overallBudget, currentUserId, selectedMonth]);
+  }, [activeHousehold?.overallBudget, mems, currentUserId]);
 
   const handleSaveMyBudget = async () => {
     if (!activeHousehold?.householdId || !currentUserId) return;

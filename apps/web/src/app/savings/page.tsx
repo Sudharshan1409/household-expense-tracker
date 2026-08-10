@@ -9,7 +9,7 @@ import { Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Target, ShieldCheck, A
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTransactionsFromDate } from "@/actions/transaction";
 import { subMonths, startOfMonth } from "date-fns";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -23,10 +23,7 @@ const formatINR = (val: number) => {
 };
 
 export default function SavingsPage() {
-  const { activeHousehold, isLoading: isHouseholdLoading } = useHousehold();
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
 
   const now = new Date();
   
@@ -41,30 +38,13 @@ export default function SavingsPage() {
   const [selectedRangeValue, setSelectedRangeValue] = useState(RANGES[0].value);
   const [viewMode, setViewMode] = useState<"individual" | "household">("individual");
 
-  useEffect(() => {
-    async function loadData() {
-      if (!activeHousehold?.householdId) return;
-      setIsLoading(true);
-      try {
-        const session = await fetchAuthSession();
-        const token = session.tokens?.idToken?.toString();
-        const userSub = session.userSub;
-        if (token && userSub) {
-          setCurrentUserId(userSub);
-          
-          const range = RANGES.find(r => r.value === selectedRangeValue) || RANGES[0];
-          
-          const txs = await getTransactionsFromDate(token, activeHousehold.householdId, range.startDate.toISOString());
-          setTransactions(txs);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, [activeHousehold?.householdId, selectedRangeValue]);
+  const range = RANGES.find(r => r.value === selectedRangeValue) || RANGES[0];
+
+  const { data: transactions = [], isLoading } = useAuthSWR(
+    getTransactionsFromDate,
+    activeHousehold?.householdId,
+    [range.startDate.toISOString()]
+  );
 
   if (isHouseholdLoading) {
     return <PageLoader title="Loading savings data..." />;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWRGlobal } from "@/hooks/use-auth-swr";
 import { getUserHouseholds, getHousehold, leaveHousehold, deleteHousehold } from "@/actions/household";
 import { Button } from "@/components/ui/button";
 import { Home, Users, UserPlus, LogOut, Trash2, Settings as SettingsIcon } from "lucide-react";
@@ -18,11 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 export default function SettingsPage() {
-  const [households, setHouseholds] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
   // State for the modal
   const [activeHousehold, setActiveHousehold] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,34 +28,23 @@ export default function SettingsPage() {
   const [pendingLeave, setPendingLeave] = useState<any>(null);
   const [pendingDelete, setPendingDelete] = useState<any>(null);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (token) {
-        const memberships = await getUserHouseholds(token);
-        
-        // Fetch metadata for each household
-        const detailedHouseholds = await Promise.all(
-          memberships.map(async (m: any) => {
-            const meta = await getHousehold(token, m.householdId);
-            return { ...m, name: meta?.name || "Unknown Household", inviteCode: meta?.inviteCode || "UNKNOWN" };
-          })
-        );
-        
-        setHouseholds(detailedHouseholds);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
+  const getDetailedHouseholds = async (token: string) => {
+    const memberships = await getUserHouseholds(token);
+    return Promise.all(
+      memberships.map(async (m: any) => {
+        const meta = await getHousehold(token, m.householdId);
+        return { ...m, name: meta?.name || "Unknown Household", inviteCode: meta?.inviteCode || "UNKNOWN" };
+      })
+    );
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: households = [], isLoading, mutate: mutateHouseholds } = useAuthSWRGlobal(
+    getDetailedHouseholds
+  );
+
+  const loadData = () => {
+    mutateHouseholds();
+  };
 
   const handleCopyInvite = (householdId: string) => {
     const inviteLink = `${window.location.origin}/invite/${householdId}`;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { useHousehold } from "@/components/providers/household-provider";
 import { deleteHouseholdTag } from "@/actions/household";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -29,8 +30,11 @@ import { getTransactionsByTag, removeTagFromHouseholdTransactions } from "@/acti
 export default function TagsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, refreshHouseholds } = useHousehold();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [isLoadingTx, setIsLoadingTx] = useState(false);
+  const { data: transactions = [], isLoading: isLoadingTx, mutate: mutateTx } = useAuthSWR(
+    getTransactionsByTag,
+    activeHousehold?.householdId,
+    selectedTag ? [selectedTag] : undefined
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   
   const [selectedTx, setSelectedTx] = useState<any>(null);
@@ -38,36 +42,9 @@ export default function TagsPage() {
 
   // We don't auto-select a tag anymore to prevent auto-loading expenses.
   
-  const loadTransactions = async (tagToLoad: string) => {
-    if (!activeHousehold?.householdId) return;
-    
-    setIsLoadingTx(true);
-    setTransactions([]); // Clear current list when selecting a new tag
-    
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (token) {
-        const items = await getTransactionsByTag(
-          token, 
-          activeHousehold.householdId, 
-          tagToLoad
-        );
-        
-        setTransactions(items);
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Failed to load tag transactions");
-    } finally {
-      setIsLoadingTx(false);
-    }
-  };
-
   const handleSelectTag = (tag: string) => {
     if (selectedTag === tag) return; // Ignore if already selected
     setSelectedTag(tag);
-    loadTransactions(tag);
   };
 
   if (isHouseholdLoading) {
@@ -260,12 +237,12 @@ export default function TagsPage() {
           transaction={selectedTx}
           householdId={activeHousehold?.householdId || ""}
           onDelete={() => {
-            setTransactions(prev => prev.filter(t => t.id !== selectedTx.id));
+            mutateTx((prev: any[] | undefined) => prev ? prev.filter(t => t.id !== selectedTx.id) : []);
             setIsModalOpen(false);
           }}
           onUpdate={(updatedTx) => {
             setSelectedTx(updatedTx);
-            setTransactions(prev => prev.map(t => t.id === updatedTx.id ? updatedTx : t));
+            mutateTx((prev: any[] | undefined) => prev ? prev.map(t => t.id === updatedTx.id ? updatedTx : t) : []);
           }}
         />
       )}

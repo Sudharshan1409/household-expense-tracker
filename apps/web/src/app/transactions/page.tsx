@@ -13,13 +13,13 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { Search, Filter } from "lucide-react";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
-import { getRecentTransactions } from "@/actions/transaction";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
+import { getRecentTransactions, deleteTransaction, updateTransactionTags } from "@/actions/transaction";
 import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
 import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
 import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { format } from "date-fns";
-import { deleteTransaction, updateTransactionTags } from "@/actions/transaction";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Trash2, Tag, X } from "lucide-react";
 import {
@@ -38,9 +38,6 @@ export default function TransactionsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   const [selectedTx, setSelectedTx] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [isLoadingTx, setIsLoadingTx] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("ALL");
@@ -54,6 +51,19 @@ export default function TransactionsPage() {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
+
+  const { data: transactions = [], isLoading: isTxLoading, mutate: mutateTx } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, selectedMonth]
+  );
+
+  const { data: members = [], isLoading: isMembersLoading } = useAuthSWR(
+    getHouseholdMembers,
+    activeHousehold?.householdId
+  );
+
+  const isLoadingTx = isTxLoading || isMembersLoading;
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempCategory, setTempCategory] = useState("ALL");
@@ -96,30 +106,16 @@ export default function TransactionsPage() {
   const [bulkTagInput, setBulkTagInput] = useState("");
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
-  const loadTransactions = async () => {
-    if (!activeHousehold?.householdId) return;
-    setIsLoadingTx(true);
-    setSelectedIds(new Set()); // Reset selections on load
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (token) {
-        // Fetch up to 1000 to cover full month securely
-        const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
-        setTransactions(recentTx);
-        
-        const mems = await getHouseholdMembers(token, activeHousehold.householdId);
-        setMembers(mems);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingTx(false);
-    }
+  // We no longer need loadTransactions since SWR handles revalidation,
+  // but we keep the reference for onUpdate/onDelete success callbacks
+  const loadTransactions = () => {
+    setSelectedIds(new Set());
+    mutateTx();
   };
 
   useEffect(() => {
-    loadTransactions();
+    // When month changes, just reset selection
+    setSelectedIds(new Set());
     
     // Check if we should open the modal from URL params
     if (typeof window !== "undefined") {
@@ -544,7 +540,7 @@ export default function TransactionsPage() {
             onDelete={loadTransactions}
             onUpdate={(updatedTx) => {
               setSelectedTx(updatedTx);
-              setTransactions(prev => prev.map(t => t.id === updatedTx.id ? updatedTx : t));
+              mutateTx((prev: any[] | undefined) => prev ? prev.map(t => t.id === updatedTx.id ? updatedTx : t) : []);
             }}
           />
 

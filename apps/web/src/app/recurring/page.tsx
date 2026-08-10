@@ -24,41 +24,28 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTemplates, deleteTemplate } from "@/actions/recurring";
 import { addHouseholdTag } from "@/actions/household";
 import { createTransaction } from "@/actions/transaction";
 import { TemplateModal } from "@/components/recurring/recurring-modal";
 import { toast } from "sonner";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 export default function RecurringPage() {
   const { activeHousehold, currentUserId, isLoading: isHouseholdLoading } = useHousehold();
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: templates = [], isLoading, mutate: mutateTemplates } = useAuthSWR(
+    getTemplates,
+    activeHousehold?.householdId
+  );
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [templateToDelete, setTemplateToDelete] = useState<any>(null);
 
-  const loadTemplates = async () => {
-    if (!activeHousehold?.householdId) return;
-    setIsLoading(true);
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (token) {
-        const data = await getTemplates(token, activeHousehold.householdId);
-        setTemplates(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+  const loadTemplates = () => {
+    mutateTemplates();
   };
-
-  useEffect(() => {
-    loadTemplates();
-  }, [activeHousehold?.householdId]);
 
   const handlePostNow = async (template: any) => {
     if (!activeHousehold?.householdId || !currentUserId) return;

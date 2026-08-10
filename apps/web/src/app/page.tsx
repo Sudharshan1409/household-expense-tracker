@@ -5,7 +5,7 @@ import { MonthPicker } from "@/components/ui/month-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Plus, IndianRupee, Home, Clock, Target } from "lucide-react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions } from "@/actions/transaction";
 import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
 import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
@@ -30,9 +30,6 @@ export default function Dashboard() {
   const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [prevTransactions, setPrevTransactions] = useState<any[]>([]);
-  const [isLoadingTx, setIsLoadingTx] = useState(true);
 
   // Default to current month in IST
   const getISTMonthString = () => {
@@ -44,34 +41,30 @@ export default function Dashboard() {
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
 
-  const loadTransactions = async () => {
-    if (!activeHousehold?.householdId) return;
-    setIsLoadingTx(true);
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (token) {
-        const recentTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, selectedMonth);
-        setTransactions(recentTx);
+  // Calculate previous month string
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 
-        // Fetch previous month
-        const [year, month] = selectedMonth.split("-").map(Number);
-        const prevMonth = month === 1 ? 12 : month - 1;
-        const prevYear = month === 1 ? year - 1 : year;
-        const prevMonthString = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-        const prevTx = await getRecentTransactions(token, activeHousehold.householdId, 1000, prevMonthString);
-        setPrevTransactions(prevTx);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingTx(false);
-    }
+  const { data: transactions = [], isLoading: isTxLoading, mutate: mutateTx } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, selectedMonth]
+  );
+
+  const { data: prevTransactions = [], isLoading: isPrevTxLoading, mutate: mutatePrevTx } = useAuthSWR(
+    getRecentTransactions,
+    activeHousehold?.householdId,
+    [1000, prevMonthString]
+  );
+
+  const isLoadingTx = isTxLoading || isPrevTxLoading;
+
+  const handleTransactionSuccess = () => {
+    mutateTx();
+    mutatePrevTx();
   };
-
-  useEffect(() => {
-    loadTransactions();
-  }, [activeHousehold?.householdId, selectedMonth]);
 
   if (isHouseholdLoading || isLoadingTx) {
     return <PageLoader title="Loading overview..." />;
@@ -377,7 +370,7 @@ export default function Dashboard() {
             onClose={() => setSelectedTx(null)}
             transaction={selectedTx}
             householdId={activeHousehold.householdId}
-            onDelete={loadTransactions}
+            onSuccess={handleTransactionSuccess}
             onUpdate={(updatedTx) => {
               setSelectedTx(updatedTx);
               setTransactions(prev => prev.map(t => t.id === updatedTx.id ? updatedTx : t));

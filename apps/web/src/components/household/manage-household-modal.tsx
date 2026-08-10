@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Settings, Users, Edit3, Trash2, Shield, User, MessageSquare } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getHouseholdMembers, updateHouseholdSettings, updateMemberBudget, removeMember, changeMemberRole, updateMemberName } from "@/actions/household";
+import { useHousehold } from "@/components/providers/household-provider";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { TelegramSettings } from "@/components/settings/telegram-settings";
 import { toast } from "sonner";
@@ -27,13 +29,17 @@ interface ManageHouseholdModalProps {
 }
 
 export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: ManageHouseholdModalProps) {
+  const { currentUserId } = useHousehold();
   const [activeTab, setActiveTab] = useState<"general" | "members" | "telegram">("general");
   const [name, setName] = useState(household?.name || "");
   const [budget, setBudget] = useState(household?.monthlyBudget || 50000);
-  const [members, setMembers] = useState<any[]>([]);
+  const { data: members = [], isLoading: isFetchingMembers, mutate: mutateMembers } = useAuthSWR(
+    getHouseholdMembers,
+    isOpen ? household?.householdId : null
+  );
+  const fetchMembers = () => mutateMembers();
   const [isLoading, setIsLoading] = useState(false);
   const [isBudgetLoading, setIsBudgetLoading] = useState(false);
-  const [isFetchingMembers, setIsFetchingMembers] = useState(false);
   
   const [userName, setUserName] = useState("");
   const [isProfileLoading, setIsProfileLoading] = useState(false);
@@ -43,37 +49,19 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
 
   const isOwner = household?.role === "OWNER";
 
-  const fetchMembers = async () => {
-    setIsFetchingMembers(true);
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      const payloadBase64 = token?.split('.')[1];
-      let currentUserId = "";
-      if (payloadBase64) {
-        currentUserId = JSON.parse(atob(payloadBase64)).sub;
-      }
-      
-      if (token && household?.householdId) {
-        const data = await getHouseholdMembers(token, household.householdId);
-        setMembers(data);
-        const me = data.find((m: any) => m.userId === currentUserId);
-        if (me?.userName) setUserName(me.userName);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsFetchingMembers(false);
-    }
-  };
-
   useEffect(() => {
-    setName(household?.name || "");
-    setBudget(household?.monthlyBudget || 50000);
-    if (isOpen) {
-      fetchMembers();
+    if (isOpen && household) {
+      setName(household.name || "");
+      setBudget(household.monthlyBudget || 50000);
     }
   }, [isOpen, household]);
+
+  useEffect(() => {
+    if (members.length > 0 && currentUserId) {
+      const me = members.find((m: any) => m.userId === currentUserId);
+      if (me?.userName) setUserName(me.userName);
+    }
+  }, [members, currentUserId]);
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
