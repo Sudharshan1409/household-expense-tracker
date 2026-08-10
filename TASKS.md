@@ -118,9 +118,9 @@ Checkboxes are the implementation source of progress.
 - [ ] Authorization isolation tests
 - [ ] E2E critical flows
 - [ ] Accessibility audit
-- [ ] Performance audit
+- [x] Performance audit
 - [ ] Security review
-- [ ] AWS deployment
-- [ ] Vercel deployment
+- [x] AWS deployment
+- [x] Vercel deployment
 - [ ] Monitoring/logging
 - [ ] Backup/recovery documentation

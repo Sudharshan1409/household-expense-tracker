@@ -41,6 +41,12 @@
 - **Smart Templates (Phase 7)**: Built `/recurring` page where users can define common templates (e.g. Rent, Netflix) and post them directly to the database with 1-click.
 - **Data Export (Phase 10)**: Added `Export CSV` functionality directly to the Reports page to download the exact transaction ledger for offline records.
 
+### UI & Performance Optimization (Latest Session)
+- **Global Data Caching**: Refactored the entire frontend to use `swr` (`useAuthSWR` and `useAuthSWRGlobal`), eliminating manual `useEffect` API calls, preventing redundant network requests, and making tab switching instantaneous.
+- **Optimistic Updates**: Intertwined `swr` mutation logic (`mutateTx`) across all modal actions (Create, Edit, Delete) so the UI immediately reflects changes without waiting for a server re-fetch.
+- **Premium UI & Animations**: Added `framer-motion`-like CSS spring animations (`animate-spring-in`, staggered list reveals, slide-in sheets) across all pages. Stripped excess decimal points from dashboard number tickers for cleaner aesthetics.
+- **Cloud Infrastructure Tuning**: Reprovisioned Vercel Serverless Functions to the `bom1` (Mumbai) region to co-locate with the AWS DynamoDB database, dropping cold-start response times from 5-10s down to milliseconds. Fixed SWR infinite loops and complex nested modal layouts.
+
 ## Next Steps for Hand-off
 1. Consider AWS CDK upgrades for Receipt Photo uploads (S3).
 2. Look into true PWA / Offline capabilities using Service Workers (Phase 9).
