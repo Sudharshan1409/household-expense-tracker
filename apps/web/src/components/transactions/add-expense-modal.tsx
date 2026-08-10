@@ -36,10 +36,10 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Other");
-  const [isDateFocused, setIsDateFocused] = useState(false);
-  const [date, setDate] = useState(() => {
+  const [isDatetimeFocused, setIsDatetimeFocused] = useState(false);
+  const [datetime, setDatetime] = useState(() => {
     const d = new Date();
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   });
   const [paidBy, setPaidBy] = useState(currentUserId || "");
   const [isShared, setIsShared] = useState(false);
@@ -81,12 +81,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setDescription(initialData?.description || "");
       setCategory(initialData?.category || "Other");
       if (initialData?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialData.date)) {
-        setDate(initialData.date);
+        setDatetime(`${initialData.date}T12:00`);
       } else {
         const d = new Date();
         d.setHours(d.getHours() + 5);
         d.setMinutes(d.getMinutes() + 30);
-        setDate(d.toISOString().split("T")[0]);
+        setDatetime(d.toISOString().slice(0, 16));
       }
       setSplitType("EQUAL");
       setPaidBy(currentUserId || "");
@@ -165,9 +165,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         }
       }
 
-      const [year, month, day] = date.split("-").map(Number);
-      const now = new Date();
-      const timestampedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+      const timestampedDate = new Date(datetime);
 
       await createTransaction(token, householdId, {
         amount: Number(amount),
@@ -280,15 +278,15 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
               
               <div className={`grid gap-4 ${transactionType === "EXPENSE" ? "grid-cols-2" : "grid-cols-1"}`}>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Date</label>
+                  <label className="text-sm font-medium">Date & Time</label>
                   <input
-                    type={isDateFocused ? "date" : "text"}
+                    type={isDatetimeFocused ? "datetime-local" : "text"}
                     required
-                    onFocus={() => setIsDateFocused(true)}
-                    onBlur={() => setIsDateFocused(false)}
+                    onFocus={() => setIsDatetimeFocused(true)}
+                    onBlur={() => setIsDatetimeFocused(false)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    value={isDateFocused ? date : (date ? format(new Date(date), "dd/MM/yyyy") : "")}
-                    onChange={(e) => setDate(e.target.value)}
+                    value={isDatetimeFocused ? datetime : (datetime ? format(new Date(datetime), "dd/MM/yyyy, hh:mm a") : "")}
+                    onChange={(e) => setDatetime(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>
