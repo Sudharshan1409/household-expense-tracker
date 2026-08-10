@@ -472,7 +472,9 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                           className="flex-1"
                           onClick={() => {
                             setSplitType(type as any);
-                            setSplits({}); // reset splits on change
+                            const defaultSplit: Record<string, number> = {};
+                            members.forEach(m => defaultSplit[m.userId] = 0);
+                            setSplits(defaultSplit); // reset splits correctly on change
                           }}
                         >
                           {type === "EQUAL" ? "Equally" : type === "PERCENTAGE" ? "Percentage" : "Exact"}

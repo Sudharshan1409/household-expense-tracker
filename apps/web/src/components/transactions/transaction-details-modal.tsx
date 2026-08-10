@@ -318,9 +318,14 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 );
               })}
               
-              {(!transaction.splits || Object.keys(transaction.splits).length === 0) && (
+              {(!transaction.splits || Object.keys(transaction.splits).length === 0) && !transaction.isShared && (
                 <div className="p-4 text-sm text-muted-foreground text-center">
                   This was a personal expense (not shared).
+                </div>
+              )}
+              {(!transaction.splits || Object.keys(transaction.splits).length === 0) && transaction.isShared && (
+                <div className="p-4 text-sm text-muted-foreground text-center italic text-amber-500">
+                  This expense was marked as shared, but split amounts were not recorded due to a sync issue. Please delete and recreate it.
                 </div>
               )}
             </div>
