@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 
@@ -6,10 +6,14 @@ interface PacingChartProps {
   transactions: any[];
   prevTransactions: any[];
   budget?: number;
+  overallBudget?: number;
+  currentUserId?: string | null;
   selectedMonth: string; // "YYYY-MM" format
 }
 
-export function PacingChart({ transactions, prevTransactions, budget, selectedMonth }: PacingChartProps) {
+export function PacingChart({ transactions, prevTransactions, budget, overallBudget, currentUserId, selectedMonth }: PacingChartProps) {
+  const [viewMode, setViewMode] = useState<"household" | "individual">("household");
+
   const chartData = useMemo(() => {
     // Determine the number of days in the selected month
     const [yearStr, monthStr] = selectedMonth.split("-");
@@ -33,6 +37,12 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
     const prevExpenseTxs = prevTransactions.filter(t => t.transactionType !== "INCOME");
 
     const hasPrevData = prevExpenseTxs.length > 0;
+    const getSpendForTx = (t: any) => {
+      if (viewMode === "household") return t.amount || 0;
+      return t.splits?.[currentUserId || ""] || 0;
+    };
+
+    const activeBudget = viewMode === "household" ? overallBudget : budget;
     
     let cumulativeSpend = 0;
     let prevCumulativeSpend = 0;
@@ -44,13 +54,13 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
       const daySpend = expenseTxs.filter((t) => {
         const d = new Date(t.date || t.createdAt);
         return d.getDate() === day;
-      }).reduce((sum, t) => sum + (t.amount || 0), 0);
+      }).reduce((sum, t) => sum + getSpendForTx(t), 0);
       
       // Find expenses for this specific day (prev month)
       const prevDaySpend = prevExpenseTxs.filter((t) => {
         const d = new Date(t.date || t.createdAt);
         return d.getDate() === day;
-      }).reduce((sum, t) => sum + (t.amount || 0), 0);
+      }).reduce((sum, t) => sum + getSpendForTx(t), 0);
 
       if (day <= currentDay) {
         cumulativeSpend += daySpend;
@@ -64,9 +74,9 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
       if (hasPrevData) {
         ghostSpend = prevCumulativeSpend;
         label = "Vs. Last Month";
-      } else if (budget) {
+      } else if (activeBudget) {
         // Ideal pace
-        ghostSpend = (budget / daysInMonth) * day;
+        ghostSpend = (activeBudget / daysInMonth) * day;
         label = "Vs. Ideal Pace";
       }
       
@@ -79,7 +89,7 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
     }
 
     return data;
-  }, [transactions, prevTransactions, budget, selectedMonth]);
+  }, [transactions, prevTransactions, budget, overallBudget, currentUserId, selectedMonth, viewMode]);
 
   // Determine if we are currently "losing" the race (current spend > ghost spend)
   const isLosing = useMemo(() => {
@@ -102,8 +112,24 @@ export function PacingChart({ transactions, prevTransactions, budget, selectedMo
       <div className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Pacing Chart 🏎️👻</h2>
-            <p className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold tracking-tight">Pacing Chart 🏎️👻</h2>
+              <div className="flex bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                <button
+                  onClick={() => setViewMode("household")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${viewMode === "household" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Household
+                </button>
+                <button
+                  onClick={() => setViewMode("individual")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${viewMode === "individual" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  My Spend
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
               {hasGhost 
                 ? `Racing against your ${ghostLabel.replace("Vs. ", "").toLowerCase()}.` 
                 : "Tracking your monthly spend."}

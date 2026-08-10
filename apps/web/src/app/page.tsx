@@ -280,6 +280,8 @@ export default function Dashboard() {
           transactions={transactions} 
           prevTransactions={prevTransactions} 
           budget={myBudget} 
+          overallBudget={activeHousehold?.overallBudget}
+          currentUserId={currentUserId}
           selectedMonth={selectedMonth} 
         />
       </div>
