@@ -33,7 +33,7 @@ Do not return any extra markdown styling, code block backticks, or explanation. 
             {
               inlineData: {
                 mimeType,
-                data: image.replace(/^data:image\/[a-z]+;base64,/, ""),
+                data: image.replace(/^data:(.*,)?/, ""),
               },
             },
           ],

@@ -30,50 +30,86 @@ export function ScanReceiptButton({ onScanSuccess, className = "" }: ScanReceipt
     setIsAnalyzing(true);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64String = reader.result as string;
-        const categories = activeHousehold?.metadata?.categories || [
-          "Groceries",
-          "Dining Out",
-          "Utilities",
-          "Rent",
-          "Transportation",
-          "Shopping",
-          "Entertainment",
-          "Health"
-        ];
+      let base64String = "";
+      let mimeType = file.type || "image/jpeg";
 
-        const res = await fetch("/api/ai/analyze-receipt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: base64String,
-            mimeType: file.type || "image/jpeg",
-            categories,
-          }),
+      if (file.type.startsWith("image/")) {
+        // Compress image client-side to prevent Vercel 4.5MB payload limit errors
+        base64String = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              let { width, height } = img;
+              const MAX_DIMENSION = 1200;
+              
+              if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                if (width > height) {
+                  height = Math.round((height * MAX_DIMENSION) / width);
+                  width = MAX_DIMENSION;
+                } else {
+                  width = Math.round((width * MAX_DIMENSION) / height);
+                  height = MAX_DIMENSION;
+                }
+              }
+              
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx?.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL("image/jpeg", 0.7));
+            };
+            img.onerror = reject;
+            img.src = e.target?.result as string;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
-
-        const json = await res.json();
-
-        if (!res.ok || !json.ok) {
-          throw new Error(json.error || "Failed to analyze image");
-        }
-
-        toast.success("✨ Receipt details extracted via Gemini AI!");
-        onScanSuccess({
-          ...json.data,
-          file,
+        mimeType = "image/jpeg"; // Since we converted to jpeg
+      } else {
+        // For PDF or other types, read directly
+        base64String = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
-        setIsAnalyzing(false);
-      };
+      }
 
-      reader.onerror = () => {
-        toast.error("Failed to read image file");
-        setIsAnalyzing(false);
-      };
+      const categories = activeHousehold?.metadata?.categories || [
+        "Groceries",
+        "Dining Out",
+        "Utilities",
+        "Rent",
+        "Transportation",
+        "Shopping",
+        "Entertainment",
+        "Health"
+      ];
 
-      reader.readAsDataURL(file);
+      const res = await fetch("/api/ai/analyze-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: base64String,
+          mimeType,
+          categories,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Failed to analyze image");
+      }
+
+      toast.success("✨ Receipt details extracted via Gemini AI!");
+      onScanSuccess({
+        ...json.data,
+        file,
+      });
+      setIsAnalyzing(false);
     } catch (error: any) {
       console.error("AI Scan error:", error);
       toast.error(error.message || "Failed to scan receipt. Try manual entry.");
