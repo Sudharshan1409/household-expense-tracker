@@ -367,12 +367,20 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 bg-muted/10 p-4">
-              <iframe 
-                src={viewerUrl} 
-                className="w-full h-full rounded-xl border bg-white" 
-                title="Receipt Viewer"
-              />
+            <div className="flex-1 bg-muted/10 p-4 flex items-center justify-center overflow-hidden">
+              {transaction.receiptUrl?.toLowerCase().includes('.pdf') ? (
+                <iframe 
+                  src={viewerUrl} 
+                  className="w-full h-full rounded-xl border bg-white" 
+                  title="Receipt Viewer"
+                />
+              ) : (
+                <img 
+                  src={viewerUrl} 
+                  alt="Receipt" 
+                  className="max-w-full max-h-full rounded-xl object-contain shadow-sm"
+                />
+              )}
             </div>
           </div>
         </div>

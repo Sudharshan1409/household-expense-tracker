@@ -5,13 +5,14 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/ui/page-loader";
-import { Wallet, Target, AlertTriangle, Info, Edit2 } from "lucide-react";
+import { Wallet, Target, AlertTriangle, Info, Edit2, X } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getRecentTransactions } from "@/actions/transaction";
 import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget } from "@/actions/household";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { format } from "date-fns";
 
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
@@ -24,6 +25,7 @@ export default function BudgetsPage() {
   // Overall Budget State
   const [isEditingOverall, setIsEditingOverall] = useState(false);
   const [overallBudget, setOverallBudget] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // My Budget State
   const [isEditingMyBudget, setIsEditingMyBudget] = useState(false);
@@ -375,7 +377,11 @@ export default function BudgetsPage() {
               if (!hasBudget && !isEditing && actual === 0) return null; // Hide completely empty unbudgeted categories unless editing
 
               return (
-                <div key={cat} className="p-4 rounded-xl border bg-card shadow-sm space-y-3">
+                <div 
+                  key={cat} 
+                  className={`p-4 rounded-xl border bg-card shadow-sm space-y-3 ${!isEditing ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
+                  onClick={() => !isEditing && setSelectedCategory(cat)}
+                >
                   <div className="flex justify-between items-center">
                     <span className="font-medium">{cat}</span>
                     {isEditing ? (
@@ -429,6 +435,40 @@ export default function BudgetsPage() {
           </div>
         )}
       </div>
+
+      {/* Category Transactions Modal */}
+      {selectedCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-card rounded-xl border shadow-lg overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-lg">{selectedCategory} Expenses ({format(new Date(selectedMonth + "-01T00:00:00"), "MMMM yyyy")})</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedCategory(null)} className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {transactions.filter(tx => tx.category === selectedCategory).length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No transactions for this category in the selected month.</p>
+              ) : (
+                transactions.filter(tx => tx.category === selectedCategory).map(tx => (
+                  <div key={tx.SK} className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div>
+                      <p className="font-medium">{tx.description}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(tx.date || tx.createdAt), "dd MMM yyyy")}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">₹{tx.amount.toFixed(2)}</p>
+                      {tx.splits?.[currentUserId || ""] > 0 && (
+                        <p className="text-xs text-muted-foreground">My share: ₹{tx.splits[currentUserId || ""].toFixed(2)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
