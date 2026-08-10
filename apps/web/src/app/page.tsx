@@ -15,6 +15,7 @@ import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-animation";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
+import { PacingChart } from "@/components/dashboard/pacing-chart";
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
 import { format } from "date-fns";
@@ -272,6 +273,15 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="animate-spring-in" style={{ animationDelay: '100ms' }}>
+        <PacingChart 
+          transactions={transactions} 
+          prevTransactions={prevTransactions} 
+          budget={myBudget} 
+          selectedMonth={selectedMonth} 
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
