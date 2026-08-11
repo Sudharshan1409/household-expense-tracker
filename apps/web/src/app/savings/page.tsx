@@ -11,8 +11,9 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTransactionsFromDate } from "@/actions/transaction";
-import { getHouseholdMembers } from "@/actions/household";
+import { getHouseholdMembers, updateSavingsData } from "@/actions/household";
 import { subMonths, startOfMonth } from "date-fns";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Check, X, Edit2, Zap } from "lucide-react";
@@ -26,7 +27,7 @@ const formatINR = (val: number) => {
 };
 
 export default function SavingsPage() {
-  const { activeHousehold, isLoading: isHouseholdLoading, currentUserId } = useHousehold();
+  const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
 
   const now = new Date();
   
@@ -82,32 +83,36 @@ export default function SavingsPage() {
   const [tempBaseSavings, setTempBaseSavings] = useState("");
   const [addedSavingsError, setAddedSavingsError] = useState("");
 
+  const saveToDB = async (ind: Goal[], hh: Goal[], other: Goal[], added: number) => {
+    if (!activeHousehold?.householdId) return;
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) return;
+      const allGoals = [...ind, ...hh, ...other];
+      await updateSavingsData(token, activeHousehold.householdId, allGoals, added);
+      await refreshHouseholds();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (activeHousehold?.householdId && currentUserId) {
-      const indKey = `savings_goals_${activeHousehold.householdId}_${currentUserId}`;
-      const savedInd = localStorage.getItem(indKey);
-      if (savedInd) setIndividualGoals(JSON.parse(savedInd));
-      else setIndividualGoals([{ id: "1", name: "Personal Milestone", amount: 500000, targetDate: defaultDateString }]);
+      const dbGoals: Goal[] = activeHousehold.metadata?.savingsGoals || [];
+      const dbAdded: number = activeHousehold.metadata?.addedSavings || 0;
       
-      const hhKey = `savings_goals_${activeHousehold.householdId}_household`;
-      const savedHh = localStorage.getItem(hhKey);
-      if (savedHh) setPureHouseholdGoals(JSON.parse(savedHh));
-      else setPureHouseholdGoals([{ id: "1", name: "Household Milestone", amount: 1000000, targetDate: defaultDateString }]);
+      const ind = dbGoals.filter(g => g.ownerId === currentUserId);
+      const hh = dbGoals.filter(g => g.ownerId === "HOUSEHOLD");
+      const others = dbGoals.filter(g => g.ownerId !== currentUserId && g.ownerId !== "HOUSEHOLD");
       
-      const others: Goal[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(`savings_goals_${activeHousehold.householdId}_`) && !key.endsWith("_household") && !key.endsWith(`_${currentUserId}`)) {
-           const goals = JSON.parse(localStorage.getItem(key) || "[]");
-           goals.forEach((g: any) => others.push(g));
-        }
-      }
+      setIndividualGoals(ind);
+      setPureHouseholdGoals(hh);
       setAllOtherIndividualGoals(others);
-
-      const addedSavingsKey = `savings_added_${activeHousehold.householdId}`;
-      setAddedSavings(Number(localStorage.getItem(addedSavingsKey)) || 0);
+      
+      setAddedSavings(dbAdded);
     }
-  }, [activeHousehold?.householdId, currentUserId, defaultDateString]);
+  }, [activeHousehold?.householdId, activeHousehold?.metadata, currentUserId]);
 
   const handleAddGoal = () => {
     setTempGoalName("");
@@ -129,11 +134,11 @@ export default function SavingsPage() {
     if (goalType === "mine") {
       const newList = individualGoals.filter(g => g.id !== goalId);
       setIndividualGoals(newList);
-      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newList));
+      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals, addedSavings);
     } else {
       const newList = pureHouseholdGoals.filter(g => g.id !== goalId);
       setPureHouseholdGoals(newList);
-      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_household`, JSON.stringify(newList));
+      saveToDB(individualGoals, newList, allOtherIndividualGoals, addedSavings);
     }
   };
 
@@ -146,21 +151,21 @@ export default function SavingsPage() {
     if (editingGoalType === "mine") {
       const currentList = individualGoals;
       if (editingGoalId === "new") {
-        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate }];
+        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate, ownerId: currentUserId || "" }];
       } else {
         newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
       }
       setIndividualGoals(newList);
-      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newList));
+      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals, addedSavings);
     } else {
       const currentList = pureHouseholdGoals;
       if (editingGoalId === "new") {
-        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate }];
+        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate, ownerId: "HOUSEHOLD" }];
       } else {
         newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
       }
       setPureHouseholdGoals(newList);
-      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_household`, JSON.stringify(newList));
+      saveToDB(individualGoals, newList, allOtherIndividualGoals, addedSavings);
     }
     setEditingGoalId(null);
   };
@@ -174,7 +179,7 @@ export default function SavingsPage() {
   const saveAddedSavings = () => {
     if (tempBaseSavings.trim() === "") {
       setAddedSavings(0);
-      localStorage.setItem(`savings_added_${activeHousehold?.householdId}`, "0");
+      saveToDB(individualGoals, pureHouseholdGoals, allOtherIndividualGoals, 0);
       setIsEditingBase(false);
       return;
     }
@@ -184,7 +189,7 @@ export default function SavingsPage() {
       return;
     }
     setAddedSavings(amt);
-    localStorage.setItem(`savings_added_${activeHousehold?.householdId}`, amt.toString());
+    saveToDB(individualGoals, pureHouseholdGoals, allOtherIndividualGoals, amt);
     setIsEditingBase(false);
   };
 

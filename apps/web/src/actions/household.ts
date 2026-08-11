@@ -476,6 +476,51 @@ export async function updateCategoryBudgets(idToken: string, householdId: string
 }
 
 /**
+ * Update savings goals and manual savings (Any Member).
+ */
+export async function updateSavingsData(idToken: string, householdId: string, savingsGoals: any[], addedSavings: number) {
+  const user = await verifyToken(idToken);
+  
+  // Verify membership
+  const membershipCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `USER#${user.userId}`,
+      ":sk": `MEMBERSHIP#${householdId}`,
+    },
+  });
+  const membershipRes = await db.send(membershipCommand);
+  if (!membershipRes.Items || membershipRes.Items.length === 0) {
+    throw new Error("Unauthorized: You must be a member of this household");
+  }
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  const metadata = existing.Items?.[0] || {};
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      savingsGoals,
+      addedSavings,
+      updatedAt: new Date().toISOString(),
+    },
+  });
+
+  await db.send(command);
+  return true;
+}
+
+/**
  * Add a new tag to the household metadata
  */
 export async function addHouseholdTag(idToken: string, householdId: string, tag: string) {
