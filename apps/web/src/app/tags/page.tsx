@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { useHousehold } from "@/components/providers/household-provider";
-import { deleteHouseholdTag } from "@/actions/household";
+import { deleteHouseholdTag, addHouseholdTag } from "@/actions/household";
 import { PageLoader } from "@/components/ui/page-loader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Hash, Trash2, Calendar, Receipt, ChevronRight } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Hash, Trash2, Calendar, Receipt, ChevronRight, Plus, X } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import {
@@ -39,6 +39,10 @@ export default function TagsPage() {
   
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [isAddingTag, setIsAddingTag] = useState(false);
 
   // We don't auto-select a tag anymore to prevent auto-loading expenses.
   
@@ -76,6 +80,40 @@ export default function TagsPage() {
     }
   };
 
+  const handleCreateTag = async () => {
+    if (!newTagName.trim() || !activeHousehold?.householdId) return;
+    
+    // Normalize tag name (remove leading #)
+    const validTag = newTagName.trim().startsWith('#') ? newTagName.trim().substring(1) : newTagName.trim();
+    if (!validTag) return;    
+    if (tags.includes(validTag)) {
+      toast("Tag already exists");
+      setNewTagName("");
+      setIsCreatingTag(false);
+      return;
+    }
+
+    setIsAddingTag(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) return;
+
+      await addHouseholdTag(token, activeHousehold.householdId, validTag);
+      toast(`Tag #${validTag} created successfully`);
+      
+      setNewTagName("");
+      setIsCreatingTag(false);
+      setSelectedTag(validTag); // Auto-select the newly created tag
+      await refreshHouseholds();
+    } catch (err) {
+      console.error(err);
+      toast("Failed to create tag");
+    } finally {
+      setIsAddingTag(false);
+    }
+  };
+
   const totalSpent = transactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
   return (
@@ -89,16 +127,45 @@ export default function TagsPage() {
         </div>
       </div>
 
-      {tags.length === 0 ? (
-        <EmptyState 
-          title="No tags created yet" 
-          description="Create tags when adding a new expense to organize them by events, trips, or special categories."
-          icon={<Hash className="w-12 h-12 text-muted-foreground/50" />}
-        />
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="w-full lg:w-64 shrink-0 flex flex-col gap-2">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">Available Tags</h3>
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="w-full lg:w-64 shrink-0 flex flex-col gap-2">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Available Tags</h3>
+              {!isCreatingTag && (
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" onClick={() => setIsCreatingTag(true)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            {isCreatingTag && (
+              <div className="flex items-center gap-2 mb-2 p-2 border rounded-xl bg-card">
+                <input 
+                  placeholder="e.g. #Goa2026"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  value={newTagName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTagName(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') handleCreateTag();
+                    if (e.key === 'Escape') {
+                      setIsCreatingTag(false);
+                      setNewTagName("");
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button size="sm" className="h-8 shrink-0" onClick={handleCreateTag} disabled={isAddingTag || !newTagName.trim()}>
+                  {isAddingTag ? "..." : "Add"}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0 text-muted-foreground" onClick={() => {
+                  setIsCreatingTag(false);
+                  setNewTagName("");
+                }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             <div className="flex lg:flex-col flex-row flex-wrap gap-2">
               {tags.map((tag) => (
                 <button
@@ -228,7 +295,6 @@ export default function TagsPage() {
             )}
           </div>
         </div>
-      )}
 
       {selectedTx && (
         <TransactionDetailsModal

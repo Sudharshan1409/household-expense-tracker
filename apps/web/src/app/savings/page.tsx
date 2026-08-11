@@ -10,9 +10,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { PageLoader } from "@/components/ui/page-loader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
-import { getTransactionsFromDate } from "@/actions/transaction";
+import { getTransactionsFromDate, getMonthlySummaries } from "@/actions/transaction";
 import { getHouseholdMembers, updateSavingsData } from "@/actions/household";
-import { subMonths, startOfMonth } from "date-fns";
+import { subMonths, startOfMonth, addMonths, addDays, isBefore, isSameMonth, isSameDay } from "date-fns";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,14 @@ export default function SavingsPage() {
 
   const range = RANGES.find(r => r.value === selectedRangeValue) || RANGES[0];
 
-  const { data: transactions = [], isLoading } = useAuthSWR(
+  const { data: summaries = [], isLoading: isSummariesLoading } = useAuthSWR(
+    getMonthlySummaries,
+    activeHousehold?.householdId
+  );
+
+  const { data: transactions = [], isLoading: isTransactionsLoading } = useAuthSWR(
     getTransactionsFromDate,
-    activeHousehold?.householdId,
+    selectedRangeValue === "month" ? activeHousehold?.householdId : null,
     [range.startDate.toISOString()]
   );
   
@@ -166,67 +171,139 @@ export default function SavingsPage() {
 
 
 
+
+
+  // Filter summaries based on selected range
+  const filteredSummaries = useMemo(() => {
+    if (selectedRangeValue === 'all') return summaries;
+    return summaries.filter((s: any) => {
+      const summaryDate = new Date(`${s.month}-01T00:00:00Z`);
+      return summaryDate >= range.startDate;
+    });
+  }, [summaries, range.startDate, selectedRangeValue]);
+
   if (isHouseholdLoading) {
     return <PageLoader title="Loading savings data..." />;
   }
 
-  // Calculate metrics for the loaded transactions
-  const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
-  const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
 
-  const mySpend = viewMode === "individual"
-    ? expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0)), 0)
-    : expenseTxs.reduce((sum, tx) => sum + tx.amount, 0);
+  // Calculate metrics
+  let mySpend = 0;
+  let myIncome = 0;
+  const userSavingsMap: Record<string, number> = {};
 
-  const myIncome = viewMode === "individual"
-    ? incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0)), 0)
-    : incomeTxs.reduce((sum, tx) => sum + tx.amount, 0);
+  filteredSummaries.forEach((summary: any) => {
+    const users = summary.users || {};
+    
+    // For envelope funding / goals
+    for (const [uid, data] of Object.entries(users)) {
+      const uData = data as any;
+      const net = (uData.income || 0) - (uData.spend || 0);
+      userSavingsMap[uid] = (userSavingsMap[uid] || 0) + net;
+    }
+
+    if (viewMode === "individual") {
+      const myData = users[currentUserId || ""] || { income: 0, spend: 0 };
+      myIncome += myData.income || 0;
+      mySpend += myData.spend || 0;
+    } else {
+      for (const data of Object.values(users)) {
+        const uData = data as any;
+        myIncome += uData.income || 0;
+        mySpend += uData.spend || 0;
+      }
+    }
+  });
 
   const mySavings = myIncome - mySpend;
   const savingsRate = myIncome > 0 ? (mySavings / myIncome) * 100 : 0;
   
-  // Calculate per-user savings for envelope math
-  const userSavingsMap: Record<string, number> = {};
-  transactions.forEach(tx => {
-    const isIncome = tx.transactionType === "INCOME";
-    const multiplier = isIncome ? 1 : -1;
-    if (tx.splits && Object.keys(tx.splits).length > 0) {
-      for (const [uid, amt] of Object.entries(tx.splits)) {
-        userSavingsMap[uid] = (userSavingsMap[uid] || 0) + ((amt as number) * multiplier);
-      }
-    } else {
-      userSavingsMap[tx.paidBy] = (userSavingsMap[tx.paidBy] || 0) + (tx.amount * multiplier);
-    }
-  });
-  
-  // 1. Group by Month for the Area Chart
-  const monthlyDataMap: Record<string, { income: number; spend: number }> = {};
-  
-  transactions.forEach(tx => {
-    const date = new Date(tx.date);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    
-    if (!monthlyDataMap[monthKey]) {
-      monthlyDataMap[monthKey] = { income: 0, spend: 0 };
-    }
-    
-    const myShare = tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0);
-    
-    if (tx.transactionType === "INCOME") {
-      monthlyDataMap[monthKey].income += viewMode === "individual" 
-        ? myShare 
-        : tx.amount;
-    } else {
-      monthlyDataMap[monthKey].spend += viewMode === "individual" ? myShare : tx.amount;
-    }
-  });
+  // Graph generation
+  let cumulativeSavings = 0;
+  let savingsOverTimeData: any[] = [];
 
-  const savingsOverTimeData = Object.entries(monthlyDataMap)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, data]) => ({
-      month,
-      savings: data.income - data.spend,
-    }));
+  if (selectedRangeValue === 'month') {
+    // ----------------------------------------------------
+    // DAY BY DAY LOGIC (Using raw transactions)
+    // ----------------------------------------------------
+    const dailyDataMap: Record<string, { income: number; spend: number }> = {};
+    let cursor = new Date(range.startDate);
+    const endCursor = new Date();
+    
+    while (isBefore(cursor, endCursor) || isSameDay(cursor, endCursor)) {
+      const dayKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+      dailyDataMap[dayKey] = { income: 0, spend: 0 };
+      cursor = addDays(cursor, 1);
+    }
+
+    transactions.forEach((tx: any) => {
+      const date = new Date(tx.date);
+      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      if (!dailyDataMap[dayKey]) dailyDataMap[dayKey] = { income: 0, spend: 0 };
+      
+      const myShare = tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && (!tx.splits || Object.keys(tx.splits).length === 0) ? tx.amount : 0);
+      
+      if (tx.transactionType === "INCOME") {
+        dailyDataMap[dayKey].income += viewMode === "individual" ? myShare : tx.amount;
+      } else {
+        dailyDataMap[dayKey].spend += viewMode === "individual" ? myShare : tx.amount;
+      }
+    });
+
+    savingsOverTimeData = Object.entries(dailyDataMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, data]) => {
+        cumulativeSavings += (data.income - data.spend);
+        return {
+          month: day.split('-').slice(1).join('/'), // e.g., "08/01"
+          savings: cumulativeSavings,
+        };
+      });
+  } else {
+    // ----------------------------------------------------
+    // MONTH BY MONTH LOGIC (Using Monthly Summaries)
+    // ----------------------------------------------------
+    const monthlyDataMap: Record<string, { income: number; spend: number }> = {};
+    
+    let cursor = new Date(range.startDate);
+    const endCursor = new Date();
+    if (selectedRangeValue !== 'all') {
+      while (isBefore(cursor, endCursor) || isSameMonth(cursor, endCursor)) {
+        const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+        monthlyDataMap[monthKey] = { income: 0, spend: 0 };
+        cursor = addMonths(cursor, 1);
+      }
+    }
+
+    filteredSummaries.forEach((summary: any) => {
+      const monthKey = summary.month;
+      if (!monthlyDataMap[monthKey]) monthlyDataMap[monthKey] = { income: 0, spend: 0 };
+      
+      const users = summary.users || {};
+      if (viewMode === "individual") {
+        const myData = users[currentUserId || ""] || { income: 0, spend: 0 };
+        monthlyDataMap[monthKey].income += myData.income || 0;
+        monthlyDataMap[monthKey].spend += myData.spend || 0;
+      } else {
+        for (const data of Object.values(users)) {
+          const uData = data as any;
+          monthlyDataMap[monthKey].income += uData.income || 0;
+          monthlyDataMap[monthKey].spend += uData.spend || 0;
+        }
+      }
+    });
+
+    savingsOverTimeData = Object.entries(monthlyDataMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, data]) => {
+        cumulativeSavings += (data.income - data.spend);
+        return {
+          month,
+          savings: cumulativeSavings,
+        };
+      });
+  }
 
   // 2. Projected Annual Savings
   let monthsInPeriod = 1;
@@ -450,7 +527,7 @@ export default function SavingsPage() {
           <Select 
             value={selectedRangeValue} 
             onValueChange={(val) => setSelectedRangeValue(val as string)}
-            disabled={isLoading}
+            disabled={isSummariesLoading}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Range">
@@ -467,7 +544,7 @@ export default function SavingsPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isSummariesLoading ? (
         <PageLoader title="Fetching range data..." />
       ) : (
         <motion.div 
@@ -518,7 +595,7 @@ export default function SavingsPage() {
                   <div className="flex flex-col items-center gap-1">
                     <div className="flex items-baseline gap-2">
                       <h2 className="text-5xl font-black tracking-tighter">
-                        <AnimatedNumber value={overallSavings} format={formatINR} />
+                        <AnimatedNumber key={selectedRangeValue} value={overallSavings} format={formatINR} />
                       </h2>
                     </div>
                     
@@ -558,7 +635,7 @@ export default function SavingsPage() {
                     </div>
                     <div className="mt-4">
                       <div className="text-3xl font-bold tracking-tight">
-                        <AnimatedNumber value={savingsRate} format={(v) => `${v.toFixed(1)}%`} />
+                        <AnimatedNumber key={selectedRangeValue} value={savingsRate} format={(v) => `${v.toFixed(1)}%`} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">% of income saved</p>
                     </div>
@@ -574,7 +651,7 @@ export default function SavingsPage() {
                     </div>
                     <div className="mt-4">
                       <div className="text-2xl font-bold tracking-tight">
-                        <AnimatedNumber value={myIncome} format={formatINR} />
+                        <AnimatedNumber key={selectedRangeValue} value={myIncome} format={formatINR} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Money earned</p>
                     </div>
@@ -590,7 +667,7 @@ export default function SavingsPage() {
                     </div>
                     <div className="mt-4">
                       <div className="text-2xl font-bold tracking-tight">
-                        <AnimatedNumber value={mySpend} format={formatINR} />
+                        <AnimatedNumber key={selectedRangeValue} value={mySpend} format={formatINR} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Money spent</p>
                     </div>
@@ -614,7 +691,12 @@ export default function SavingsPage() {
                 <h2 className="text-xl font-semibold tracking-tight">Savings Growth Over Time</h2>
               </div>
               <div className="h-[300px] w-full">
-                {savingsOverTimeData.length === 0 ? (
+                {(selectedRangeValue === 'month' && isTransactionsLoading) ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    Loading daily insights...
+                  </div>
+                ) : savingsOverTimeData.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
                     <TrendingUp className="h-8 w-8 opacity-20" />
                     No data available for this period
@@ -624,8 +706,8 @@ export default function SavingsPage() {
                     <AreaChart data={savingsOverTimeData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -644,7 +726,7 @@ export default function SavingsPage() {
                         dx={-10}
                       />
                       <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" dataKey="savings" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSavings)" strokeWidth={3} />
+                      <Area type="monotone" dataKey="savings" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorSavings)" strokeWidth={3} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
@@ -671,7 +753,7 @@ export default function SavingsPage() {
                 </div>
                 <div className="relative z-10">
                   <div className="text-4xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
-                    <AnimatedNumber value={projectedAnnualSavings} format={formatINR} />
+                    <AnimatedNumber key={selectedRangeValue} value={projectedAnnualSavings} format={formatINR} />
                   </div>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                     Based on your current habits, this is how much you are on track to save in a full year.

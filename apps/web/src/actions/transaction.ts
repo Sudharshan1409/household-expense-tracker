@@ -3,6 +3,7 @@
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
 import { PutCommand, QueryCommand, DeleteCommand, GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { getMonthlySummaryOp } from "@/lib/summary";
 
 export async function createTransaction(
   idToken: string,
@@ -89,6 +90,9 @@ export async function createTransaction(
       });
     }
   }
+
+  const summaryOp = await getMonthlySummaryOp(householdId, transactionItem, "ADD");
+  transactItems.push(summaryOp);
 
   await db.send(
     new TransactWriteCommand({
@@ -215,6 +219,9 @@ export async function deleteTransaction(idToken: string, householdId: string, sk
     });
   }
   
+  const summaryOp = await getMonthlySummaryOp(householdId, existing.Item, "REMOVE");
+  transactItems.push(summaryOp);
+
   await db.send(
     new TransactWriteCommand({
       TransactItems: transactItems,
@@ -361,4 +368,19 @@ export async function removeTagFromHouseholdTransactions(idToken: string, househ
 
   
   return true;
+}
+
+export async function getMonthlySummaries(idToken: string, householdId: string) {
+  const user = await verifyToken(idToken);
+  
+  const summariesResponse = await db.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":skPrefix": `MONTHLY_SUMMARY#`
+    }
+  }));
+
+  return summariesResponse.Items || [];
 }

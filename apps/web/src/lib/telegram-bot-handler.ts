@@ -1,5 +1,6 @@
 import { db, TABLE_NAME } from "@/lib/db";
 import { GetCommand, PutCommand, DeleteCommand, QueryCommand, UpdateCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { getMonthlySummaryOp } from "@/lib/summary";
 import crypto from "node:crypto";
 
 type BotState = "IDLE" | "AWAITING_AMOUNT" | "AWAITING_DESC" | "AWAITING_CATEGORY" | "AWAITING_TAGS" | "AWAITING_SPLIT";
@@ -432,6 +433,10 @@ async function saveAndFinishTransaction(chatId: string | number, profile: any, s
   };
 
   const transactItems: any[] = [{ Put: { TableName: TABLE_NAME, Item: transactionItem } }];
+  
+  const summaryOp = await getMonthlySummaryOp(profile.householdId, transactionItem, "ADD");
+  transactItems.push(summaryOp);
+
   if (session.draft.tags && session.draft.tags.length > 0) {
     for (const tag of session.draft.tags) {
       transactItems.push({
