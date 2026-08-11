@@ -84,6 +84,14 @@ export default function Dashboard() {
   const budgetRemaining = (myBudget || 0) - mySpend;
   const budgetProgress = myBudget ? Math.min((mySpend / myBudget) * 100, 100) : 0;
 
+  // Date and Daily calculations
+  const daysInMonth = new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]), 0).getDate();
+  const isCurrentMonth = selectedMonth === getISTMonthString();
+  const currentDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
+  const daysLeft = daysInMonth - currentDay + 1;
+  const avgDailySpend = currentDay > 0 ? totalSpend / currentDay : 0;
+  const dailySpendLimit = (myBudget && budgetRemaining > 0 && isCurrentMonth) ? budgetRemaining / daysLeft : 0;
+
   // Previous Month metrics
   const prevExpenseTxs = prevTransactions.filter(tx => tx.transactionType !== "INCOME");
   const prevTotalSpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
@@ -92,11 +100,6 @@ export default function Dashboard() {
   // MoM calculations
   const spendDiff = prevTotalSpend > 0 ? ((totalSpend - prevTotalSpend) / prevTotalSpend) * 100 : 0;
   const mySpendDiff = prevMySpend > 0 ? ((mySpend - prevMySpend) / prevMySpend) * 100 : 0;
-
-  // Average Daily Spend
-  const daysInMonth = new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]), 0).getDate();
-  const currentDay = selectedMonth === getISTMonthString() ? new Date().getDate() : daysInMonth;
-  const avgDailySpend = currentDay > 0 ? totalSpend / currentDay : 0;
 
   // Top 10 Expenses
   const topExpenses = [...expenseTxs].sort((a, b) => b.amount - a.amount).slice(0, 10);
@@ -264,7 +267,10 @@ export default function Dashboard() {
                   budgetRemaining < 0 ? (
                     <span className="text-destructive font-medium">Over by {formatINR(Math.abs(budgetRemaining))}</span>
                   ) : (
-                    <span>{budgetProgress.toFixed(0)}% used of {formatINR(myBudget)}</span>
+                    <span>
+                      {budgetProgress.toFixed(0)}% used
+                      {isCurrentMonth && dailySpendLimit > 0 ? ` • ${formatINR(dailySpendLimit)}/day left` : ` of ${formatINR(myBudget)}`}
+                    </span>
                   )
                 ) : (
                   "Set in Budgets tab"
