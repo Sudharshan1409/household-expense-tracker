@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Receipt, SplitSquareHorizontal, Camera, Info } from "lucide-react";
+import { X, Receipt, SplitSquareHorizontal, Camera, Info, Sparkles, Loader2, Mic } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { createTransaction } from "@/actions/transaction";
 import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
@@ -56,6 +56,11 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [recentTags, setRecentTags] = useState<string[]>([]);
+  const [magicText, setMagicText] = useState("");
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   const loadMembers = async () => {
     try {
@@ -98,6 +103,8 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setTags([]);
       setTagInput("");
       setReceiptFile(initialData?.file || null);
+      setAiSuggestedTags(initialData?.tags || []);
+      setMagicText("");
       try {
         const stored = localStorage.getItem("recent_tags");
         if (stored) setRecentTags(JSON.parse(stored));
@@ -110,6 +117,87 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       ...prev,
       [userId]: parseFloat(val) || 0
     }));
+  };
+
+  const handleMagicEntry = async () => {
+    if (!magicText.trim() || isMagicLoading) return;
+    
+    setIsMagicLoading(true);
+    try {
+      const res = await fetch("/api/ai/parse-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: magicText,
+          categories: activeHousehold?.metadata?.categories || [],
+          tags: activeHousehold?.metadata?.tags || [],
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Failed to parse text");
+
+      const data = json.data;
+      if (data.amount !== undefined && data.amount !== 0) setAmount(String(data.amount));
+      if (data.description) setDescription(data.description);
+      if (data.category) setCategory(data.category);
+      if (data.tags && Array.isArray(data.tags)) {
+        setAiSuggestedTags(data.tags);
+      }
+      
+      // If AI found a date, use it. Otherwise, reset to current date & time
+      if (data.date && data.date.includes("T")) {
+        setDatetime(data.date);
+      } else {
+        const d = new Date();
+        setDatetime(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+      }
+
+      toast.success("✨ Magic Entry Applied!");
+      // We don't clear the text so the user can see what they entered
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Could not parse text");
+    } finally {
+      setIsMagicLoading(false);
+    }
+  };
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      setMagicText(transcript);
+    };
+    recognition.onerror = (event: any) => {
+      console.error("Speech Recognition Error:", event.error, event.message);
+      setIsListening(false);
+      if (event.error !== 'no-speech') {
+        toast.error(`Microphone error: ${event.error}. Note: Brave browser blocks this feature by default.`);
+      }
+    };
+    recognition.onend = () => setIsListening(false);
+    
+    recognition.start();
   };
 
   if (!isOpen) return null;
@@ -239,6 +327,51 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 pb-2">
           <div className="space-y-4">
+            {/* Magic Text Input */}
+            <div className="space-y-1.5 p-3 rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-500/5 to-pink-500/5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Magic Entry
+              </label>
+              <div className="relative flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Type or speak: 'Spent 400 on swiggy today'"
+                    value={magicText}
+                    onChange={(e) => setMagicText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleMagicEntry();
+                      }
+                    }}
+                    disabled={isMagicLoading || isLoading}
+                    className="flex h-11 w-full rounded-lg border border-purple-500/30 bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleVoiceInput}
+                    disabled={isMagicLoading || isLoading}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors ${
+                      isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                    title={isListening ? "Stop listening" : "Start Voice Input"}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={handleMagicEntry}
+                  disabled={!magicText.trim() || isMagicLoading}
+                  className="h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shrink-0 shadow-sm"
+                >
+                  {isMagicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fill"}
+                </Button>
+              </div>
+            </div>
+
             {initialData && (
               <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 border border-purple-500/30 text-purple-800 dark:text-purple-200 p-3 rounded-xl text-sm flex items-center gap-2 shadow-sm animate-in fade-in-50">
                 <span className="text-base">✨</span>
@@ -396,7 +529,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
               {/* Recommended Tags Suggestions */}
               {(() => {
                 const allAvailable = Array.from(new Set([
-                  ...(initialData?.tags || []), 
+                  ...aiSuggestedTags, 
                   ...recentTags,
                   ...(activeHousehold?.metadata?.tags || [])
                 ])).filter(t => !tags.includes(t));
@@ -417,7 +550,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {displayTags.map((t: string) => {
-                        const isAiSuggested = initialData?.tags?.includes(t);
+                        const isAiSuggested = aiSuggestedTags.includes(t);
                         return (
                           <Badge 
                             key={t} 
