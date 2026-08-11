@@ -55,6 +55,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [recentTags, setRecentTags] = useState<string[]>([]);
 
   const loadMembers = async () => {
     try {
@@ -97,6 +98,10 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setTags([]);
       setTagInput("");
       setReceiptFile(initialData?.file || null);
+      try {
+        const stored = localStorage.getItem("recent_tags");
+        if (stored) setRecentTags(JSON.parse(stored));
+      } catch (e) {}
     }
   }, [isOpen, currentUserId, initialData]);
 
@@ -190,6 +195,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         origin: { y: 0.6 },
         colors: ['#8b5cf6', '#10b981', '#f59e0b']
       });
+
+      const updatedRecentTags = Array.from(new Set([...tags, ...recentTags])).slice(0, 20);
+      setRecentTags(updatedRecentTags);
+      try {
+        localStorage.setItem("recent_tags", JSON.stringify(updatedRecentTags));
+      } catch (e) {}
 
       onSuccess();
       onClose();
@@ -383,31 +394,48 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
               </div>
               
               {/* Recommended Tags Suggestions */}
-              {Array.from(new Set([...(activeHousehold?.metadata?.tags || []), ...(initialData?.tags || [])]))
-                .filter((t: string) => !tags.includes(t)).length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
-                    <span className="text-primary">✨</span> Recommended Tags
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Array.from(new Set([...(activeHousehold?.metadata?.tags || []), ...(initialData?.tags || [])]))
-                      .filter((t: string) => !tags.includes(t))
-                      .map((t: string) => {
+              {(() => {
+                const allAvailable = Array.from(new Set([
+                  ...(initialData?.tags || []), 
+                  ...recentTags,
+                  ...(activeHousehold?.metadata?.tags || [])
+                ])).filter(t => !tags.includes(t));
+                
+                const searchStr = tagInput.trim().replace(/^#/, '').toLowerCase();
+                const matchingTags = searchStr 
+                  ? allAvailable.filter(t => t.toLowerCase().includes(searchStr))
+                  : allAvailable;
+                
+                const displayTags = matchingTags.slice(0, 8);
+
+                if (displayTags.length === 0) return null;
+
+                return (
+                  <div className="mt-3">
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <span className="text-primary">✨</span> Recommended Tags
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {displayTags.map((t: string) => {
                         const isAiSuggested = initialData?.tags?.includes(t);
                         return (
                           <Badge 
                             key={t} 
                             variant="outline" 
                             className={`cursor-pointer transition-colors text-xs font-normal border-dashed ${isAiSuggested ? "border-primary/50 text-primary hover:bg-primary/10" : "hover:bg-muted"}`}
-                            onClick={() => setTags([...tags, t])}
+                            onClick={() => {
+                              setTags([...tags, t]);
+                              setTagInput("");
+                            }}
                           >
                             + #{t}
                           </Badge>
                         );
                       })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Receipt Upload */}

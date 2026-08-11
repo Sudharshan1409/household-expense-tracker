@@ -42,6 +42,7 @@ export default function TransactionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("ALL");
   const [filterMember, setFilterMember] = useState("ALL");
+  const [filterTag, setFilterTag] = useState("ALL");
 
   // Default to current month in IST
   const getISTMonthString = () => {
@@ -68,12 +69,15 @@ export default function TransactionsPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempCategory, setTempCategory] = useState("ALL");
   const [tempMember, setTempMember] = useState("ALL");
+  const [tempTag, setTempTag] = useState("ALL");
+  const [tagSearchTerm, setTagSearchTerm] = useState("");
   const [tempMonth, setTempMonth] = useState<string>(getISTMonthString());
 
   const applyFilters = () => {
     const monthChanged = tempMonth !== selectedMonth;
     setFilterCategory(tempCategory);
     setFilterMember(tempMember);
+    setFilterTag(tempTag);
     if (monthChanged) {
       setSelectedMonth(tempMonth);
     }
@@ -84,17 +88,20 @@ export default function TransactionsPage() {
   const clearFilters = () => {
     setFilterCategory("ALL");
     setFilterMember("ALL");
+    setFilterTag("ALL");
     const m = getISTMonthString();
     setSelectedMonth(m);
     
     setTempCategory("ALL");
     setTempMember("ALL");
+    setTempTag("ALL");
     setTempMonth(m);
     setCurrentPage(1);
   };
 
   const activeFilterCount = (filterCategory !== "ALL" ? 1 : 0) + 
                             (filterMember !== "ALL" ? 1 : 0) + 
+                            (filterTag !== "ALL" ? 1 : 0) + 
                             (selectedMonth !== getISTMonthString() ? 1 : 0);
 
   // Pagination & Selection
@@ -138,10 +145,17 @@ export default function TransactionsPage() {
     const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === "ALL" || tx.category === filterCategory;
     const matchesMember = filterMember === "ALL" || tx.paidBy === filterMember;
-    return matchesSearch && matchesCategory && matchesMember;
+    const matchesTag = filterTag === "ALL" || (tx.tags && tx.tags.includes(filterTag));
+    return matchesSearch && matchesCategory && matchesMember && matchesTag;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+
+  const availableTags: string[] = activeHousehold?.metadata?.tags || [];
+  const filteredAvailableTags = availableTags.filter(tag => 
+    tag.toLowerCase().includes(tagSearchTerm.toLowerCase())
+  );
+
   const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleSelectAll = () => {
@@ -284,7 +298,9 @@ export default function TransactionsPage() {
           if (open) {
             setTempCategory(filterCategory);
             setTempMember(filterMember);
+            setTempTag(filterTag);
             setTempMonth(selectedMonth);
+            setTagSearchTerm("");
           }
         }}>
           <Button variant="outline" className="h-10 w-full sm:w-auto" onClick={() => setIsFilterModalOpen(true)}>
@@ -318,7 +334,7 @@ export default function TransactionsPage() {
                       {tempCategory === "ALL" ? "All Categories" : tempCategory}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent alignItemWithTrigger={false}>
                     <SelectItem value="ALL">All Categories</SelectItem>
                     {activeHousehold?.categories?.map((c: string) => (
                       <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -335,11 +351,46 @@ export default function TransactionsPage() {
                       {tempMember === "ALL" ? "All Members" : (members.find(m => m.userId === tempMember)?.userName || tempMember)}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent alignItemWithTrigger={false}>
                     <SelectItem value="ALL">All Members</SelectItem>
                     {members.map(m => (
                       <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Tag</span>
+                <Select value={tempTag} onValueChange={(val) => setTempTag(val as string)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Tags">
+                      {tempTag === "ALL" ? "All Tags" : `#${tempTag}`}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <div className="p-2 pb-1 sticky top-0 bg-popover z-10">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <input 
+                          type="text" 
+                          placeholder="Search tags..." 
+                          value={tagSearchTerm}
+                          onChange={(e) => setTagSearchTerm(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <SelectItem value="ALL">All Tags</SelectItem>
+                      {filteredAvailableTags.length === 0 && (
+                        <div className="px-2 py-4 text-center text-xs text-muted-foreground">No tags found.</div>
+                      )}
+                      {filteredAvailableTags.map((t: string) => (
+                        <SelectItem key={t} value={t}>#{t}</SelectItem>
+                      ))}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
@@ -373,6 +424,14 @@ export default function TransactionsPage() {
             <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-normal">
               {members.find(m => m.userId === filterMember)?.userName || "Member"}
               <button onClick={() => { setFilterMember("ALL"); setCurrentPage(1); }} className="hover:bg-muted rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {filterTag !== "ALL" && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-normal">
+              #{filterTag}
+              <button onClick={() => { setFilterTag("ALL"); setCurrentPage(1); }} className="hover:bg-muted rounded-full p-0.5">
                 <X className="h-3 w-3" />
               </button>
             </Badge>

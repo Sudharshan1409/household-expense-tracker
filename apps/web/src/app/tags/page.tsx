@@ -9,7 +9,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Hash, Trash2, Calendar, Receipt, ChevronRight, Plus, X } from "lucide-react";
+import { Hash, Trash2, Calendar, Receipt, ChevronRight, Plus, X, Search } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ export default function TagsPage() {
   const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [isAddingTag, setIsAddingTag] = useState(false);
+  const [tagSearchTerm, setTagSearchTerm] = useState("");
 
   // We don't auto-select a tag anymore to prevent auto-loading expenses.
   
@@ -56,6 +57,7 @@ export default function TagsPage() {
   }
 
   const tags: string[] = activeHousehold?.metadata?.tags || [];
+  const filteredTags = tags.filter(tag => tag.toLowerCase().includes(tagSearchTerm.toLowerCase()));
 
   const handleDeleteTag = async () => {
     if (!activeHousehold?.householdId || !selectedTag) return;
@@ -166,8 +168,26 @@ export default function TagsPage() {
               </div>
             )}
 
-            <div className="flex lg:flex-col flex-row flex-wrap gap-2">
-              {tags.map((tag) => (
+            {/* Search Input for Tags */}
+            {!isCreatingTag && tags.length > 0 && (
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  placeholder="Search tags..."
+                  value={tagSearchTerm}
+                  onChange={(e) => setTagSearchTerm(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-sm transition-colors"
+                />
+              </div>
+            )}
+
+            <div className="flex lg:flex-col flex-row flex-wrap gap-2 max-h-[60vh] overflow-y-auto pr-1">
+              {filteredTags.length === 0 && tags.length > 0 && (
+                <div className="text-sm text-muted-foreground py-4 text-center border rounded-xl border-dashed">
+                  No tags found.
+                </div>
+              )}
+              {filteredTags.map((tag) => (
                 <button
                   key={tag}
                   onClick={() => handleSelectTag(tag)}
@@ -177,11 +197,11 @@ export default function TagsPage() {
                       : "bg-card text-foreground hover:bg-muted"
                   }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <Hash className="w-4 h-4" />
-                    #{tag}
+                  <span className="flex items-center gap-2 truncate pr-2">
+                    <Hash className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{tag}</span>
                   </span>
-                  <ChevronRight className={`w-4 h-4 ${selectedTag === tag ? "opacity-100" : "opacity-0 lg:opacity-50"}`} />
+                  <ChevronRight className={`shrink-0 w-4 h-4 ${selectedTag === tag ? "opacity-100" : "opacity-0 lg:opacity-50"}`} />
                 </button>
               ))}
             </div>

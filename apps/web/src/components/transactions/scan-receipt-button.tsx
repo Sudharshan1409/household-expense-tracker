@@ -87,6 +87,7 @@ export function ScanReceiptButton({ onScanSuccess, className = "" }: ScanReceipt
         "Entertainment",
         "Health"
       ];
+      const tags = activeHousehold?.metadata?.tags || [];
 
       const res = await fetch("/api/ai/analyze-receipt", {
         method: "POST",
@@ -95,6 +96,7 @@ export function ScanReceiptButton({ onScanSuccess, className = "" }: ScanReceipt
           image: base64String,
           mimeType,
           categories,
+          tags,
         }),
       });
 

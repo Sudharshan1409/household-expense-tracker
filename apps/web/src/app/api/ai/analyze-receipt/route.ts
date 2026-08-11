@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { image, mimeType, categories = ["Groceries", "Dining Out", "Utilities", "Rent", "Transportation", "Shopping", "Entertainment", "Health"] } = await req.json();
+    const { image, mimeType, categories = ["Groceries", "Dining Out", "Utilities", "Rent", "Transportation", "Shopping", "Entertainment", "Health"], tags = [] } = await req.json();
 
     if (!image || !mimeType) {
       return NextResponse.json({ ok: false, error: "Image data is required" }, { status: 400 });
@@ -21,7 +21,7 @@ Extract the expense details and return ONLY a valid JSON object matching this ex
   "description": string (the merchant name or a concise summary of the transaction, e.g. 'DMart Superstore', 'Shell Petrol', 'Swiggy Food'),
   "category": string (choose the single best matching category from this list: ${JSON.stringify(categories)}. If none match accurately, select the closest one or default to 'General'),
   "date": string (the transaction date and time in YYYY-MM-DDThh:mm format if clearly visible on the receipt/screenshot. If only date is visible without time, assume 12:00. Otherwise return an empty string ""),
-  "tags": string[] (an array of 2-4 lowercase descriptive keywords without '#' symbols, e.g. ["grocery", "dmart", "essential"])
+  "tags": string[] (an array of exactly 8 lowercase descriptive keywords without '#' symbols. Important: First prioritize selecting any relevant tags from this existing household list: ${JSON.stringify(tags)}. If the relevant existing tags are fewer than 8, invent new descriptive tags to reach exactly 8 tags total. e.g. ["grocery", "dmart", "essential"])
 }
 Do not return any extra markdown styling, code block backticks, or explanation. Just the raw JSON string.`;
 
