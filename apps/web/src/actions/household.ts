@@ -38,6 +38,7 @@ export async function getHousehold(idToken: string, householdId: string) {
       ":pk": `HOUSEHOLD#${householdId}`,
       ":sk": `METADATA`,
     },
+    ConsistentRead: true,
   });
 
   const response = await db.send(command);
@@ -502,6 +503,7 @@ export async function updateSavingsData(idToken: string, householdId: string, sa
       ":pk": `HOUSEHOLD#${householdId}`,
       ":sk": `METADATA`,
     },
+    ConsistentRead: true,
   });
   const existing = await db.send(existingCommand);
   const metadata = existing.Items?.[0] || {};
