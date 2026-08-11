@@ -266,7 +266,8 @@ export default function SavingsPage() {
   const projectedAnnualSavings = (mySavings / monthsInPeriod) * 12;
 
   const baseSavings = addedSavings;
-  const totalTrackedSavings = Math.max(mySavings, 0);
+  const householdTracked = Object.values(userSavingsMap).reduce((sum, val) => sum + Math.max(0, val), 0);
+  const totalTrackedSavings = viewMode === "individual" ? Math.max(mySavings, 0) : householdTracked;
   const overallSavings = totalTrackedSavings + baseSavings;
 
   // 3. Savings Goal Tracker (Sequential Funding)
@@ -310,14 +311,24 @@ export default function SavingsPage() {
       let needed = goal.amount;
       
       if (goal.type === "mine" || goal.type === "other") {
-        // Individual goals only take from their specific owner's pool
+        // Individual goals take from their specific owner's pool first
         const ownerId = goal.ownerId || currentUserId || "";
         const available = userPools[ownerId] || 0;
-        const take = Math.min(available, needed);
+        let take = Math.min(available, needed);
         allocated += take;
         userPools[ownerId] -= take;
+        needed -= take;
         if (take > 0) {
           fundingSources.push({ name: `${getMemberName(ownerId)} Tracked Savings`, amount: take });
+        }
+        
+        // Then, fall back to manual household savings if needed
+        if (needed > 0) {
+          const takeHh = Math.min(userPools["household"] || 0, needed);
+          allocated += takeHh;
+          userPools["household"] -= takeHh;
+          needed -= takeHh;
+          if (takeHh > 0) fundingSources.push({ name: "Manual Household Savings", amount: takeHh });
         }
       } else {
         // Household goals take from the general household pool first
