@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
@@ -29,15 +29,16 @@ const formatINR = (val: number) => {
 export default function SavingsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
 
-  const now = new Date();
-  
-  const RANGES = [
-    { label: "This Month", value: "month", startDate: startOfMonth(now) },
-    { label: "Quarterly (Last 3 Months)", value: "quarter", startDate: subMonths(now, 3) },
-    { label: "Last Six Months", value: "six_months", startDate: subMonths(now, 6) },
-    { label: "Last 1 Year", value: "year", startDate: subMonths(now, 12) },
-    { label: "From Start (All Time)", value: "all", startDate: new Date("2000-01-01") },
-  ];
+  const RANGES = useMemo(() => {
+    const now = new Date();
+    return [
+      { label: "This Month", value: "month", startDate: startOfMonth(now) },
+      { label: "Quarterly (Last 3 Months)", value: "quarter", startDate: subMonths(now, 3) },
+      { label: "Last Six Months", value: "six_months", startDate: subMonths(now, 6) },
+      { label: "Last 1 Year", value: "year", startDate: subMonths(now, 12) },
+      { label: "From Start (All Time)", value: "all", startDate: new Date("2000-01-01") },
+    ];
+  }, []);
 
   const [selectedRangeValue, setSelectedRangeValue] = useState(RANGES[0].value);
   const [viewMode, setViewMode] = useState<"individual" | "household">("individual");
