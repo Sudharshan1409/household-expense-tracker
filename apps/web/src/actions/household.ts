@@ -479,7 +479,7 @@ export async function updateCategoryBudgets(idToken: string, householdId: string
 /**
  * Update savings goals and manual savings (Any Member).
  */
-export async function updateSavingsData(idToken: string, householdId: string, savingsGoals: any[], addedSavings: number) {
+export async function updateSavingsData(idToken: string, householdId: string, savingsGoals: any[]) {
   const user = await verifyToken(idToken);
   
   // Verify membership
@@ -513,7 +513,6 @@ export async function updateSavingsData(idToken: string, householdId: string, sa
     Item: {
       ...metadata,
       savingsGoals,
-      addedSavings,
       updatedAt: new Date().toISOString(),
     },
   });

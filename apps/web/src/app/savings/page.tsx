@@ -70,7 +70,6 @@ export default function SavingsPage() {
   const [individualGoals, setIndividualGoals] = useState<Goal[]>([]);
   const [pureHouseholdGoals, setPureHouseholdGoals] = useState<Goal[]>([]);
   const [allOtherIndividualGoals, setAllOtherIndividualGoals] = useState<Goal[]>([]);
-  const [addedSavings, setAddedSavings] = useState(0);
   
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [editingGoalType, setEditingGoalType] = useState<"mine" | "household" | null>(null);
@@ -78,19 +77,15 @@ export default function SavingsPage() {
   const [tempGoalName, setTempGoalName] = useState("");
   const [tempGoalAmount, setTempGoalAmount] = useState("");
   const [tempGoalDate, setTempGoalDate] = useState("");
-  
-  const [isEditingBase, setIsEditingBase] = useState(false);
-  const [tempBaseSavings, setTempBaseSavings] = useState("");
-  const [addedSavingsError, setAddedSavingsError] = useState("");
 
-  const saveToDB = async (ind: Goal[], hh: Goal[], other: Goal[], added: number) => {
+  const saveToDB = async (ind: Goal[], hh: Goal[], other: Goal[]) => {
     if (!activeHousehold?.householdId) return;
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (!token) return;
       const allGoals = [...ind, ...hh, ...other];
-      await updateSavingsData(token, activeHousehold.householdId, allGoals, added);
+      await updateSavingsData(token, activeHousehold.householdId, allGoals);
       await refreshHouseholds();
     } catch (err) {
       console.error(err);
@@ -100,7 +95,6 @@ export default function SavingsPage() {
   useEffect(() => {
     if (activeHousehold?.householdId && currentUserId) {
       const dbGoals: Goal[] = activeHousehold.metadata?.savingsGoals || [];
-      const dbAdded: number = activeHousehold.metadata?.addedSavings || 0;
       
       const ind = dbGoals.filter(g => g.ownerId === currentUserId);
       const hh = dbGoals.filter(g => g.ownerId === "HOUSEHOLD");
@@ -109,8 +103,6 @@ export default function SavingsPage() {
       setIndividualGoals(ind);
       setPureHouseholdGoals(hh);
       setAllOtherIndividualGoals(others);
-      
-      setAddedSavings(dbAdded);
     }
   }, [activeHousehold?.householdId, activeHousehold?.metadata, currentUserId]);
 
@@ -134,11 +126,11 @@ export default function SavingsPage() {
     if (goalType === "mine") {
       const newList = individualGoals.filter(g => g.id !== goalId);
       setIndividualGoals(newList);
-      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals, addedSavings);
+      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals);
     } else {
       const newList = pureHouseholdGoals.filter(g => g.id !== goalId);
       setPureHouseholdGoals(newList);
-      saveToDB(individualGoals, newList, allOtherIndividualGoals, addedSavings);
+      saveToDB(individualGoals, newList, allOtherIndividualGoals);
     }
   };
 
@@ -156,7 +148,7 @@ export default function SavingsPage() {
         newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
       }
       setIndividualGoals(newList);
-      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals, addedSavings);
+      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals);
     } else {
       const currentList = pureHouseholdGoals;
       if (editingGoalId === "new") {
@@ -165,33 +157,12 @@ export default function SavingsPage() {
         newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
       }
       setPureHouseholdGoals(newList);
-      saveToDB(individualGoals, newList, allOtherIndividualGoals, addedSavings);
+      saveToDB(individualGoals, newList, allOtherIndividualGoals);
     }
     setEditingGoalId(null);
   };
   
-  const handleEditAddedSavings = () => {
-    setTempBaseSavings(addedSavings > 0 ? String(addedSavings) : "");
-    setAddedSavingsError("");
-    setIsEditingBase(true);
-  };
 
-  const saveAddedSavings = () => {
-    if (tempBaseSavings.trim() === "") {
-      setAddedSavings(0);
-      saveToDB(individualGoals, pureHouseholdGoals, allOtherIndividualGoals, 0);
-      setIsEditingBase(false);
-      return;
-    }
-    const amt = Number(tempBaseSavings);
-    if (isNaN(amt) || amt < 0) {
-      setAddedSavingsError("Please enter a valid positive number.");
-      return;
-    }
-    setAddedSavings(amt);
-    saveToDB(individualGoals, pureHouseholdGoals, allOtherIndividualGoals, amt);
-    setIsEditingBase(false);
-  };
 
 
   if (isHouseholdLoading) {
@@ -265,10 +236,9 @@ export default function SavingsPage() {
   
   const projectedAnnualSavings = (mySavings / monthsInPeriod) * 12;
 
-  const baseSavings = addedSavings;
   const householdTracked = Object.values(userSavingsMap).reduce((sum, val) => sum + Math.max(0, val), 0);
   const totalTrackedSavings = viewMode === "individual" ? Math.max(mySavings, 0) : householdTracked;
-  const overallSavings = totalTrackedSavings + baseSavings;
+  const overallSavings = totalTrackedSavings;
 
   // 3. Savings Goal Tracker (Sequential Funding)
   let currentGoalsList = [];
@@ -290,21 +260,20 @@ export default function SavingsPage() {
   for (const k in userSavingsMap) {
     userPools[k] = Math.max(0, userSavingsMap[k]);
   }
-  userPools["household"] = addedSavings; // manual savings act as a general household pool
   
   const goalsWithProgress = currentGoalsList.map(goal => {
     let allocated = 0;
     const fundingSources: { name: string; amount: number }[] = [];
     
     if (viewMode === "individual") {
-      // In individual mode, use single combined pool (my tracked + my added)
-      const individualPool = (userPools[currentUserId || ""] || 0) + addedSavings;
+      // In individual mode, use single combined pool
+      const individualPool = userPools[currentUserId || ""] || 0;
       const previouslyAllocated = currentGoalsList
         .slice(0, currentGoalsList.indexOf(goal))
         .reduce((sum, g) => sum + ((g as any).allocated || 0), 0);
       const available = Math.max(0, individualPool - previouslyAllocated);
       allocated = Math.min(available, goal.amount);
-      if (allocated > 0) fundingSources.push({ name: "My Combined Savings", amount: allocated });
+      if (allocated > 0) fundingSources.push({ name: "My Tracked Savings", amount: allocated });
       (goal as any).allocated = allocated;
     } else {
       // In household mode, strict pool rules apply
@@ -321,26 +290,9 @@ export default function SavingsPage() {
         if (take > 0) {
           fundingSources.push({ name: `${getMemberName(ownerId)} Tracked Savings`, amount: take });
         }
-        
-        // Then, fall back to manual household savings if needed
-        if (needed > 0) {
-          const takeHh = Math.min(userPools["household"] || 0, needed);
-          allocated += takeHh;
-          userPools["household"] -= takeHh;
-          needed -= takeHh;
-          if (takeHh > 0) fundingSources.push({ name: "Manual Household Savings", amount: takeHh });
-        }
       } else {
-        // Household goals take from the general household pool first
-        const takeHh = Math.min(userPools["household"] || 0, needed);
-        allocated += takeHh;
-        userPools["household"] -= takeHh;
-        needed -= takeHh;
-        if (takeHh > 0) fundingSources.push({ name: "Household Manual Savings", amount: takeHh });
-        
-        // Then drain from all personal pools if still needed
+        // Household goals drain from all personal pools
         for (const uid of Object.keys(userPools)) {
-          if (uid === "household") continue;
           if (needed <= 0) break;
           const available = userPools[uid] || 0;
           if (available > 0) {
@@ -569,44 +521,7 @@ export default function SavingsPage() {
                       </h2>
                     </div>
                     
-                    {viewMode === "individual" && !isEditingBase && (
-                      <div className="flex flex-col items-center mt-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={handleEditAddedSavings}
-                          className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
-                        >
-                          {addedSavings > 0 ? "Adjust Savings" : "+ Add Savings"}
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {viewMode === "individual" && isEditingBase && (
-                      <div className="flex flex-col items-center gap-1 mt-2">
-                        <div className="flex items-center gap-2">
-                          <input 
-                            value={tempBaseSavings}
-                            onChange={e => {
-                              setTempBaseSavings(e.target.value);
-                              setAddedSavingsError("");
-                            }}
-                            type="number"
-                            placeholder="Amount"
-                            className="flex h-8 w-28 rounded-md border border-input bg-background px-2 text-xs shadow-sm focus-visible:outline-none"
-                          />
-                          <Button size="sm" variant="default" className="h-8 px-3 text-xs" onClick={saveAddedSavings}>
-                            Save
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setIsEditingBase(false)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        {addedSavingsError && (
-                          <span className="text-[10px] text-destructive font-medium">{addedSavingsError}</span>
-                        )}
-                      </div>
-                    )}
+
                   </div>
 
                   <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${
