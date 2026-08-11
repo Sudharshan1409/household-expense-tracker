@@ -11,6 +11,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTransactionsFromDate } from "@/actions/transaction";
+import { getHouseholdMembers } from "@/actions/household";
 import { subMonths, startOfMonth } from "date-fns";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
@@ -47,31 +48,93 @@ export default function SavingsPage() {
     activeHousehold?.householdId,
     [range.startDate.toISOString()]
   );
+  
+  const { data: members = [] } = useAuthSWR(
+    getHouseholdMembers,
+    activeHousehold?.householdId
+  );
+  
+  const getMemberName = (uid: string) => {
+    if (uid === currentUserId) return "Your";
+    const member = members.find((m: any) => m.userId === uid);
+    if (member?.userName) return `${member.userName}'s`;
+    return "Member's";
+  };
 
-  const [individualGoal, setIndividualGoal] = useState({ name: "Personal Milestone", amount: 500000 });
-  const [householdGoal, setHouseholdGoal] = useState({ name: "Household Milestone", amount: 1000000 });
-  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  type Goal = { id: string; name: string; amount: number; targetDate: string; type?: "mine" | "household" | "other"; ownerId?: string; allocated?: number };
+  const defaultDate = new Date();
+  defaultDate.setFullYear(defaultDate.getFullYear() + 1);
+  const defaultDateString = defaultDate.toISOString().split("T")[0];
+
+  const [individualGoals, setIndividualGoals] = useState<Goal[]>([]);
+  const [pureHouseholdGoals, setPureHouseholdGoals] = useState<Goal[]>([]);
+  const [allOtherIndividualGoals, setAllOtherIndividualGoals] = useState<Goal[]>([]);
+  const [addedSavings, setAddedSavings] = useState(0);
+  
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [editingGoalType, setEditingGoalType] = useState<"mine" | "household" | null>(null);
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [tempGoalName, setTempGoalName] = useState("");
   const [tempGoalAmount, setTempGoalAmount] = useState("");
+  const [tempGoalDate, setTempGoalDate] = useState("");
+  
+  const [isEditingBase, setIsEditingBase] = useState(false);
+  const [tempBaseSavings, setTempBaseSavings] = useState("");
+  const [addedSavingsError, setAddedSavingsError] = useState("");
 
   useEffect(() => {
     if (activeHousehold?.householdId && currentUserId) {
-      const indKey = `savings_goal_${activeHousehold.householdId}_${currentUserId}`;
-      const hhKey = `savings_goal_${activeHousehold.householdId}_household`;
-      
+      const indKey = `savings_goals_${activeHousehold.householdId}_${currentUserId}`;
       const savedInd = localStorage.getItem(indKey);
-      if (savedInd) setIndividualGoal(JSON.parse(savedInd));
+      if (savedInd) setIndividualGoals(JSON.parse(savedInd));
+      else setIndividualGoals([{ id: "1", name: "Personal Milestone", amount: 500000, targetDate: defaultDateString }]);
       
+      const hhKey = `savings_goals_${activeHousehold.householdId}_household`;
       const savedHh = localStorage.getItem(hhKey);
-      if (savedHh) setHouseholdGoal(JSON.parse(savedHh));
-    }
-  }, [activeHousehold?.householdId, currentUserId]);
+      if (savedHh) setPureHouseholdGoals(JSON.parse(savedHh));
+      else setPureHouseholdGoals([{ id: "1", name: "Household Milestone", amount: 1000000, targetDate: defaultDateString }]);
+      
+      const others: Goal[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`savings_goals_${activeHousehold.householdId}_`) && !key.endsWith("_household") && !key.endsWith(`_${currentUserId}`)) {
+           const goals = JSON.parse(localStorage.getItem(key) || "[]");
+           goals.forEach((g: any) => others.push(g));
+        }
+      }
+      setAllOtherIndividualGoals(others);
 
-  const handleEditGoal = () => {
-    const currentGoal = viewMode === "individual" ? individualGoal : householdGoal;
-    setTempGoalName(currentGoal.name);
-    setTempGoalAmount(currentGoal.amount.toString());
-    setIsEditingGoal(true);
+      const addedSavingsKey = `savings_added_${activeHousehold.householdId}`;
+      setAddedSavings(Number(localStorage.getItem(addedSavingsKey)) || 0);
+    }
+  }, [activeHousehold?.householdId, currentUserId, defaultDateString]);
+
+  const handleAddGoal = () => {
+    setTempGoalName("");
+    setTempGoalAmount("");
+    setTempGoalDate(defaultDateString);
+    setEditingGoalId("new");
+    setEditingGoalType(viewMode === "individual" ? "mine" : "household");
+  };
+
+  const handleEditGoal = (goal: any) => {
+    setTempGoalName(goal.name);
+    setTempGoalAmount(goal.amount.toString());
+    setTempGoalDate(goal.targetDate || defaultDateString);
+    setEditingGoalId(goal.id);
+    setEditingGoalType(goal.type);
+  };
+  
+  const handleDeleteGoal = (goalId: string, goalType: string) => {
+    if (goalType === "mine") {
+      const newList = individualGoals.filter(g => g.id !== goalId);
+      setIndividualGoals(newList);
+      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newList));
+    } else {
+      const newList = pureHouseholdGoals.filter(g => g.id !== goalId);
+      setPureHouseholdGoals(newList);
+      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_household`, JSON.stringify(newList));
+    }
   };
 
   const saveGoal = () => {
@@ -79,16 +142,52 @@ export default function SavingsPage() {
     const amt = parseInt(tempGoalAmount.replace(/[^0-9]/g, ""), 10);
     if (isNaN(amt) || amt <= 0) return;
 
-    const newGoal = { name: tempGoalName, amount: amt };
-    if (viewMode === "individual") {
-      setIndividualGoal(newGoal);
-      localStorage.setItem(`savings_goal_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newGoal));
+    let newList: Goal[];
+    if (editingGoalType === "mine") {
+      const currentList = individualGoals;
+      if (editingGoalId === "new") {
+        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate }];
+      } else {
+        newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
+      }
+      setIndividualGoals(newList);
+      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newList));
     } else {
-      setHouseholdGoal(newGoal);
-      localStorage.setItem(`savings_goal_${activeHousehold?.householdId}_household`, JSON.stringify(newGoal));
+      const currentList = pureHouseholdGoals;
+      if (editingGoalId === "new") {
+        newList = [...currentList, { id: Date.now().toString(), name: tempGoalName, amount: amt, targetDate: tempGoalDate }];
+      } else {
+        newList = currentList.map(g => g.id === editingGoalId ? { ...g, name: tempGoalName, amount: amt, targetDate: tempGoalDate } : g);
+      }
+      setPureHouseholdGoals(newList);
+      localStorage.setItem(`savings_goals_${activeHousehold?.householdId}_household`, JSON.stringify(newList));
     }
-    setIsEditingGoal(false);
+    setEditingGoalId(null);
   };
+  
+  const handleEditAddedSavings = () => {
+    setTempBaseSavings(addedSavings > 0 ? String(addedSavings) : "");
+    setAddedSavingsError("");
+    setIsEditingBase(true);
+  };
+
+  const saveAddedSavings = () => {
+    if (tempBaseSavings.trim() === "") {
+      setAddedSavings(0);
+      localStorage.setItem(`savings_added_${activeHousehold?.householdId}`, "0");
+      setIsEditingBase(false);
+      return;
+    }
+    const amt = Number(tempBaseSavings);
+    if (isNaN(amt) || amt < 0) {
+      setAddedSavingsError("Please enter a valid positive number.");
+      return;
+    }
+    setAddedSavings(amt);
+    localStorage.setItem(`savings_added_${activeHousehold?.householdId}`, amt.toString());
+    setIsEditingBase(false);
+  };
+
 
   if (isHouseholdLoading) {
     return <PageLoader title="Loading savings data..." />;
@@ -99,15 +198,29 @@ export default function SavingsPage() {
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
 
   const mySpend = viewMode === "individual"
-    ? expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0)
+    ? expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0)), 0)
     : expenseTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
   const myIncome = viewMode === "individual"
-    ? incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0)
+    ? incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0)), 0)
     : incomeTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
   const mySavings = myIncome - mySpend;
   const savingsRate = myIncome > 0 ? (mySavings / myIncome) * 100 : 0;
+  
+  // Calculate per-user savings for envelope math
+  const userSavingsMap: Record<string, number> = {};
+  transactions.forEach(tx => {
+    const isIncome = tx.transactionType === "INCOME";
+    const multiplier = isIncome ? 1 : -1;
+    if (tx.splits && Object.keys(tx.splits).length > 0) {
+      for (const [uid, amt] of Object.entries(tx.splits)) {
+        userSavingsMap[uid] = (userSavingsMap[uid] || 0) + ((amt as number) * multiplier);
+      }
+    } else {
+      userSavingsMap[tx.paidBy] = (userSavingsMap[tx.paidBy] || 0) + (tx.amount * multiplier);
+    }
+  });
   
   // 1. Group by Month for the Area Chart
   const monthlyDataMap: Record<string, { income: number; spend: number }> = {};
@@ -120,11 +233,11 @@ export default function SavingsPage() {
       monthlyDataMap[monthKey] = { income: 0, spend: 0 };
     }
     
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    const myShare = tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId && !tx.splits ? tx.amount : 0);
     
     if (tx.transactionType === "INCOME") {
       monthlyDataMap[monthKey].income += viewMode === "individual" 
-        ? (myShare || (tx.paidBy === currentUserId ? tx.amount : 0)) 
+        ? myShare 
         : tx.amount;
     } else {
       monthlyDataMap[monthKey].spend += viewMode === "individual" ? myShare : tx.amount;
@@ -147,13 +260,173 @@ export default function SavingsPage() {
   
   const projectedAnnualSavings = (mySavings / monthsInPeriod) * 12;
 
-  // 3. Savings Goal Tracker
-  const currentGoal = viewMode === "individual" ? individualGoal : householdGoal;
-  const goalProgress = Math.min((Math.max(mySavings, 0) / currentGoal.amount) * 100, 100);
+  const baseSavings = addedSavings;
+  const totalTrackedSavings = Math.max(mySavings, 0);
+  const overallSavings = totalTrackedSavings + baseSavings;
+
+  // 3. Savings Goal Tracker (Sequential Funding)
+  let currentGoalsList = [];
+  if (viewMode === "individual") {
+    currentGoalsList = individualGoals.map(g => ({ ...g, type: "mine" as const, ownerId: currentUserId }));
+    currentGoalsList.sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
+  } else {
+    currentGoalsList = [
+      ...pureHouseholdGoals.map(g => ({ ...g, type: "household" as const, ownerId: "" })),
+      ...individualGoals.map(g => ({ ...g, type: "mine" as const, ownerId: currentUserId })),
+      ...allOtherIndividualGoals.map(g => ({ ...g, type: "other" as const }))
+    ];
+    currentGoalsList.sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
+  }
+  const avgMonthlySavings = monthsInPeriod > 0 ? mySavings / monthsInPeriod : mySavings;
+
+  // Initialize pools for envelope funding
+  const userPools: Record<string, number> = {};
+  for (const k in userSavingsMap) {
+    userPools[k] = Math.max(0, userSavingsMap[k]);
+  }
+  userPools["household"] = addedSavings; // manual savings act as a general household pool
+  
+  const goalsWithProgress = currentGoalsList.map(goal => {
+    let allocated = 0;
+    const fundingSources: { name: string; amount: number }[] = [];
+    
+    if (viewMode === "individual") {
+      // In individual mode, use single combined pool (my tracked + my added)
+      const individualPool = (userPools[currentUserId || ""] || 0) + addedSavings;
+      const previouslyAllocated = currentGoalsList
+        .slice(0, currentGoalsList.indexOf(goal))
+        .reduce((sum, g) => sum + ((g as any).allocated || 0), 0);
+      const available = Math.max(0, individualPool - previouslyAllocated);
+      allocated = Math.min(available, goal.amount);
+      if (allocated > 0) fundingSources.push({ name: "My Combined Savings", amount: allocated });
+      (goal as any).allocated = allocated;
+    } else {
+      // In household mode, strict pool rules apply
+      let needed = goal.amount;
+      
+      if (goal.type === "mine" || goal.type === "other") {
+        // Individual goals only take from their specific owner's pool
+        const ownerId = goal.ownerId || currentUserId || "";
+        const available = userPools[ownerId] || 0;
+        const take = Math.min(available, needed);
+        allocated += take;
+        userPools[ownerId] -= take;
+        if (take > 0) {
+          fundingSources.push({ name: `${getMemberName(ownerId)} Tracked Savings`, amount: take });
+        }
+      } else {
+        // Household goals take from the general household pool first
+        const takeHh = Math.min(userPools["household"] || 0, needed);
+        allocated += takeHh;
+        userPools["household"] -= takeHh;
+        needed -= takeHh;
+        if (takeHh > 0) fundingSources.push({ name: "Household Manual Savings", amount: takeHh });
+        
+        // Then drain from all personal pools if still needed
+        for (const uid of Object.keys(userPools)) {
+          if (uid === "household") continue;
+          if (needed <= 0) break;
+          const available = userPools[uid] || 0;
+          if (available > 0) {
+            const take = Math.min(available, needed);
+            allocated += take;
+            userPools[uid] -= take;
+            needed -= take;
+            if (take > 0) {
+              fundingSources.push({ name: `${getMemberName(uid)} Tracked Savings`, amount: take });
+            }
+          }
+        }
+      }
+      (goal as any).allocated = allocated;
+    }
+    
+    const progress = Math.min((allocated / goal.amount) * 100, 100);
+    
+    let trackingMessage = "";
+    let trackingColor = "text-muted-foreground";
+    let requiredMonthlySavings = 0;
+    
+    if (progress >= 100) {
+      trackingMessage = "Goal Achieved! 🎉";
+      trackingColor = "text-emerald-500";
+    } else {
+      const target = new Date(goal.targetDate);
+      const now = new Date();
+      const monthsRemaining = (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
+      
+      if (monthsRemaining > 0) {
+        const amountRemaining = goal.amount - allocated;
+        requiredMonthlySavings = amountRemaining / monthsRemaining;
+        
+        if (avgMonthlySavings >= requiredMonthlySavings) {
+           trackingMessage = `On track! Keep saving ₹${requiredMonthlySavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}/mo.`;
+           trackingColor = "text-emerald-500 dark:text-emerald-400";
+        } else {
+           trackingMessage = `Falling behind. Try to save ₹${requiredMonthlySavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}/mo.`;
+           trackingColor = "text-amber-500 dark:text-amber-400";
+        }
+      } else {
+        trackingMessage = "Target date has passed!";
+        trackingColor = "text-red-500";
+      }
+    }
+    
+    return { ...goal, allocated, progress, trackingMessage, trackingColor, fundingSources, requiredMonthlySavings };
+  });
 
   // 4. Emergency Runway Calculator
   const avgMonthlySpend = monthsInPeriod > 0 ? mySpend / monthsInPeriod : mySpend;
-  const emergencyRunwayMonths = avgMonthlySpend > 0 ? mySavings / avgMonthlySpend : 0;
+  const emergencyRunwayMonths = avgMonthlySpend > 0 ? overallSavings / avgMonthlySpend : 0;
+
+  const renderEditGoalForm = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Award className="h-5 w-5 text-amber-500" />
+        <h2 className="text-lg font-semibold tracking-tight">{editingGoalId === "new" ? "New Goal" : "Edit Goal"}</h2>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Goal Name</label>
+          <input 
+            value={tempGoalName} 
+            onChange={(e) => setTempGoalName(e.target.value)} 
+            placeholder="e.g., Europe Trip" 
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Target Amount (₹)</label>
+            <input 
+              value={tempGoalAmount} 
+              onChange={(e) => setTempGoalAmount(e.target.value)} 
+              placeholder="500000" 
+              type="number"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Target Date</label>
+            <input 
+              value={tempGoalDate} 
+              onChange={(e) => setTempGoalDate(e.target.value)} 
+              type="date"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 pt-2">
+          <Button size="sm" onClick={saveGoal} className="flex-1 gap-1">
+            <Check className="h-4 w-4" /> Save
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setEditingGoalId(null)} className="flex-1 gap-1">
+            <X className="h-4 w-4" /> Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -273,15 +546,51 @@ export default function SavingsPage() {
                     <span>{viewMode === "individual" ? "Net Savings Vault" : "Household Savings Vault"}</span>
                   </div>
                   
-                  <div>
+                  <div className="flex flex-col items-center gap-1">
                     <div className="flex items-baseline gap-2">
                       <h2 className="text-5xl font-black tracking-tighter">
-                        <AnimatedNumber value={mySavings} format={formatINR} />
+                        <AnimatedNumber value={overallSavings} format={formatINR} />
                       </h2>
                     </div>
-                    <p className="mt-2 text-muted-foreground">
-                      Total money saved in this period
-                    </p>
+                    
+                    {viewMode === "individual" && !isEditingBase && (
+                      <div className="flex flex-col items-center mt-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={handleEditAddedSavings}
+                          className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                        >
+                          {addedSavings > 0 ? "Adjust Savings" : "+ Add Savings"}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {viewMode === "individual" && isEditingBase && (
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <div className="flex items-center gap-2">
+                          <input 
+                            value={tempBaseSavings}
+                            onChange={e => {
+                              setTempBaseSavings(e.target.value);
+                              setAddedSavingsError("");
+                            }}
+                            type="number"
+                            placeholder="Amount"
+                            className="flex h-8 w-28 rounded-md border border-input bg-background px-2 text-xs shadow-sm focus-visible:outline-none"
+                          />
+                          <Button size="sm" variant="default" className="h-8 px-3 text-xs" onClick={saveAddedSavings}>
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setIsEditingBase(false)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {addedSavingsError && (
+                          <span className="text-[10px] text-destructive font-medium">{addedSavingsError}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${
@@ -438,97 +747,149 @@ export default function SavingsPage() {
                 </div>
               </motion.div>
 
-              {/* Savings Goal Tracker */}
-              <motion.div 
-                className="rounded-xl border bg-card p-6 shadow-sm flex-1 flex flex-col justify-center relative group"
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-                }}
-              >
-                {!isEditingGoal ? (
-                  <>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-5 w-5 text-amber-500" />
-                        <h2 className="text-lg font-semibold tracking-tight">{currentGoal.name}</h2>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {goalProgress.toFixed(0)}%
-                        </span>
-                        <button 
-                          onClick={handleEditGoal}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground"
-                          title="Edit Goal"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
-                        <motion.div 
-                          className="h-full bg-emerald-500 rounded-full" 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${goalProgress}%` }}
-                          transition={{ duration: 1.5, ease: "easeOut" }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                          ₹{Math.max(mySavings, 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </span>
-                        <span className="text-muted-foreground">
-                          Target: ₹{currentGoal.amount.toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-4">
-                      {goalProgress >= 100 
-                        ? "Goal Achieved! Time to set a new target. 🎉"
-                        : `You are tracking towards your ${currentGoal.name} milestone. Keep it up!`}
-                    </p>
-                  </>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Award className="h-5 w-5 text-amber-500" />
-                      <h2 className="text-lg font-semibold tracking-tight">Edit Goal</h2>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Goal Name</label>
-                        <input 
-                          value={tempGoalName} 
-                          onChange={(e) => setTempGoalName(e.target.value)} 
-                          placeholder="e.g., Europe Trip" 
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Target Amount (₹)</label>
-                        <input 
-                          value={tempGoalAmount} 
-                          onChange={(e) => setTempGoalAmount(e.target.value)} 
-                          placeholder="500000" 
-                          type="number"
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button size="sm" onClick={saveGoal} className="w-full gap-1">
-                          <Check className="h-4 w-4" /> Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setIsEditingGoal(false)} className="w-full gap-1">
-                          <X className="h-4 w-4" /> Cancel
-                        </Button>
-                      </div>
-                    </div>
+              {/* Savings Goals List */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-lg font-semibold tracking-tight">Milestone Goals</h3>
+                  <Button size="sm" variant="outline" onClick={handleAddGoal} className="h-8">
+                    + Add Goal
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {goalsWithProgress.map(goal => (
+                    <motion.div 
+                      key={goal.id}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="group relative rounded-xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:shadow-md cursor-pointer hover:border-border"
+                      onClick={() => setExpandedGoalId(expandedGoalId === goal.id ? null : goal.id)}
+                    >
+                      {editingGoalId !== goal.id ? (
+                        <>
+                          <div className="flex items-start justify-between mb-4 gap-2">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                              <Award className="h-5 w-5 text-amber-500 shrink-0" />
+                              <h2 className="text-lg font-semibold tracking-tight break-words">{goal.name}</h2>
+                              {viewMode === "household" && (
+                                <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full whitespace-nowrap shrink-0 ${
+                                  goal.type === 'household' ? 'bg-blue-500/10 text-blue-600' :
+                                  goal.type === 'mine' ? 'bg-purple-500/10 text-purple-600' :
+                                  'bg-slate-500/10 text-slate-600'
+                                }`}>
+                                  {goal.type === 'household' ? 'Household' : goal.type === 'mine' ? 'My Goal' : 'Member Goal'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                              <span className="text-sm font-medium text-muted-foreground mr-1">
+                                {goal.progress.toFixed(0)}%
+                              </span>
+                              {goal.type !== "other" && (
+                                <>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleEditGoal(goal); }}
+                                    className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 rounded-md transition-colors"
+                                    title="Edit Goal"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteGoal(goal.id, goal.type as string); }}
+                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1.5 rounded-md transition-colors"
+                                    title="Delete Goal"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
+                              <motion.div 
+                                className="h-full bg-emerald-500 rounded-full" 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${goal.progress}%` }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                              />
+                            </div>
+                            <div className="mt-3 flex items-center justify-between text-xs">
+                              <span className="font-semibold text-emerald-500 dark:text-emerald-400">
+                                ₹{(goal.allocated || 0).toLocaleString('en-IN')}
+                              </span>
+                              <span className="text-muted-foreground font-medium">
+                                Target: ₹{goal.amount.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            
+                            <p className={`mt-3 text-xs font-medium ${goal.trackingColor}`}>
+                              {goal.trackingMessage}
+                            </p>
+                            
+                            {expandedGoalId === goal.id && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }} 
+                                animate={{ height: 'auto', opacity: 1 }}
+                                className="mt-4 pt-4 border-t border-border space-y-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Target Date:</span>
+                                    <span className="font-medium text-foreground">{new Date(goal.targetDate).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Required Pace:</span>
+                                    <span className="font-medium text-foreground">₹{Math.round(goal.requiredMonthlySavings || 0).toLocaleString('en-IN')}/mo</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Current Savings Pace:</span>
+                                    <span className="font-medium text-foreground">₹{Math.round(avgMonthlySavings).toLocaleString('en-IN')}/mo</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="pt-2 border-t border-border/50">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Funding Breakdown</span>
+                                  <div className="mt-2 space-y-1.5">
+                                    {goal.fundingSources?.map((src: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground/80">{src.name}</span>
+                                        <span className="font-medium text-foreground">₹{src.amount.toLocaleString('en-IN')}</span>
+                                      </div>
+                                    ))}
+                                    {goal.fundingSources?.length === 0 && (
+                                      <div className="text-xs text-muted-foreground italic">No funds allocated yet.</div>
+                                    )}
+                                    {goal.amount > (goal.allocated || 0) && (
+                                      <div className="flex justify-between text-xs text-rose-500/90 pt-1 mt-1 border-t border-rose-500/10">
+                                        <span>Shortfall (Unfunded)</span>
+                                        <span className="font-medium">₹{(goal.amount - (goal.allocated || 0)).toLocaleString('en-IN')}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        renderEditGoalForm()
+                      )}
+                    </motion.div>
+                  ))}
                   </div>
+                
+                {editingGoalId === "new" && (
+                  <motion.div 
+                    className="rounded-xl border bg-card p-6 shadow-sm flex flex-col justify-center relative border-primary/50"
+                  >
+                    {renderEditGoalForm()}
+                  </motion.div>
                 )}
-              </motion.div>
+              </div>
 
               {/* Emergency Runway Calculator */}
               <motion.div 
