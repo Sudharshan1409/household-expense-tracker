@@ -169,7 +169,7 @@ export default function BudgetsPage() {
   const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
   const actualsMap = expenseTxs.reduce((acc, tx) => {
     const cat = tx.category || "Other";
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    const myShare = tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0);
     acc[cat] = (acc[cat] || 0) + myShare;
     return acc;
   }, {} as Record<string, number>);
@@ -501,8 +501,8 @@ export default function BudgetsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">₹{tx.amount.toFixed(2)}</p>
-                      {tx.splits?.[currentUserId || ""] > 0 ? (
-                        <p className="text-xs text-muted-foreground">My share: ₹{tx.splits[currentUserId || ""].toFixed(2)}</p>
+                      {(tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)) > 0 ? (
+                        <p className="text-xs text-muted-foreground">My share: ₹{(tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)).toFixed(2)}</p>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">No share</p>
                       )}

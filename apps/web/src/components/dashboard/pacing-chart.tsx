@@ -39,7 +39,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     const hasPrevData = prevExpenseTxs.length > 0;
     const getSpendForTx = (t: any) => {
       if (viewMode === "household") return t.amount || 0;
-      return t.splits?.[currentUserId || ""] || 0;
+      return t.isShared ? (t.splits?.[currentUserId || ""] || 0) : (t.paidBy === currentUserId ? t.amount : 0);
     };
 
     const activeBudget = viewMode === "household" ? overallBudget : budget;

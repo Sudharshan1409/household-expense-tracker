@@ -32,6 +32,7 @@ export default function ReportsPage() {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
+  const [viewMode, setViewMode] = useState<"individual" | "household">("individual");
 
   const handleExportCSV = () => {
     if (transactions.length === 0) return;
@@ -129,15 +130,18 @@ export default function ReportsPage() {
   const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
 
-  const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
-  const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  const getSpendShare = (tx: any) => viewMode === "household" ? tx.amount : (tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0));
+  const getIncomeShare = (tx: any) => viewMode === "household" ? tx.amount : (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0));
+
+  const mySpend = expenseTxs.reduce((sum, tx) => sum + getSpendShare(tx), 0);
+  const myIncome = incomeTxs.reduce((sum, tx) => sum + getIncomeShare(tx), 0);
   const mySavings = myIncome - mySpend;
   
   // Month-over-Month logic
   const prevExpenseTxs = prevTransactions.filter(tx => tx.transactionType !== "INCOME");
   const prevIncomeTxs = prevTransactions.filter(tx => tx.transactionType === "INCOME");
-  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
-  const prevMyIncome = prevIncomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + getSpendShare(tx), 0);
+  const prevMyIncome = prevIncomeTxs.reduce((sum, tx) => sum + getIncomeShare(tx), 0);
   
   const mySpendDiff = prevMySpend > 0 ? ((mySpend - prevMySpend) / prevMySpend) * 100 : 0;
   const myIncomeDiff = prevMyIncome > 0 ? ((myIncome - prevMyIncome) / prevMyIncome) * 100 : 0;
@@ -147,10 +151,10 @@ export default function ReportsPage() {
     { name: 'Expense', amount: mySpend, fill: '#ef4444' }
   ];
   
-  // 1. Category Data (Individual Share)
+  // 1. Category Data
   const categoryMap = expenseTxs.reduce((acc, tx) => {
     const cat = tx.category || "Other";
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    const myShare = getSpendShare(tx);
     if (myShare > 0) {
       acc[cat] = (acc[cat] || 0) + myShare;
     }
@@ -160,28 +164,31 @@ export default function ReportsPage() {
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .map(([name, value]) => ({ name, value }));
 
-  // 2. Member Data (Who paid total household expenses)
+  // 2. Member Data (Who paid)
   const memberMap = expenseTxs.reduce((acc, tx) => {
-    const mName = getMemberName(tx.paidBy);
-    acc[mName] = (acc[mName] || 0) + tx.amount;
+    const shareToCount = getSpendShare(tx);
+    if (shareToCount > 0) {
+      const mName = getMemberName(tx.paidBy);
+      acc[mName] = (acc[mName] || 0) + shareToCount;
+    }
     return acc;
   }, {} as Record<string, number>);
   const memberData = Object.entries(memberMap)
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .map(([name, value]) => ({ name, value }));
 
-  // 3. Daily Trend Data (Individual Share)
+  // 3. Daily Trend Data
   const dailyMap: Record<string, number> = {};
   [...expenseTxs].reverse().forEach(tx => {
     const dateStr = format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy");
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    const myShare = getSpendShare(tx);
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
   });
   const dailyData = Object.entries(dailyMap).map(([date, amount]) => ({ date, amount }));
 
-  // 4. Tags Data (Individual Share)
+  // 4. Tags Data
   const tagMap = expenseTxs.reduce((acc, tx) => {
-    const myShare = tx.splits?.[currentUserId || ""] || 0;
+    const myShare = getSpendShare(tx);
     if (myShare > 0 && tx.tags && tx.tags.length > 0) {
       tx.tags.forEach((t: string) => {
         acc[t] = (acc[t] || 0) + myShare;
@@ -219,7 +226,29 @@ export default function ReportsPage() {
             Analyze your spending habits.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex bg-muted/50 p-1 rounded-lg border">
+            <button
+              onClick={() => setViewMode("individual")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                viewMode === "individual"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              My Share
+            </button>
+            <button
+              onClick={() => setViewMode("household")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                viewMode === "household"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Household Total
+            </button>
+          </div>
           <HouseholdSwitcher />
         </div>
       </div>
@@ -373,9 +402,14 @@ export default function ReportsPage() {
                       isAnimationActive={true}
                       animationBegin={100}
                       animationDuration={1200}
+                      style={{ outline: 'none' }}
                     >
                       {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]} 
+                          style={{ outline: 'none' }} 
+                        />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
@@ -406,9 +440,14 @@ export default function ReportsPage() {
                       isAnimationActive={true}
                       animationBegin={300}
                       animationDuration={1200}
+                      style={{ outline: 'none' }}
                     >
                       {memberData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[(index + 3) % COLORS.length]} 
+                          style={{ outline: 'none' }} 
+                        />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />

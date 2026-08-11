@@ -77,7 +77,7 @@ export default function Dashboard() {
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
   
   const totalSpend = expenseTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-  const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
   const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
   const mySavings = myIncome - mySpend;
 
@@ -95,7 +95,7 @@ export default function Dashboard() {
   // Previous Month metrics
   const prevExpenseTxs = prevTransactions.filter(tx => tx.transactionType !== "INCOME");
   const prevTotalSpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || 0), 0);
+  const prevMySpend = prevExpenseTxs.reduce((sum, tx) => sum + (tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
   
   // MoM calculations
   const spendDiff = prevTotalSpend > 0 ? ((totalSpend - prevTotalSpend) / prevTotalSpend) * 100 : 0;
