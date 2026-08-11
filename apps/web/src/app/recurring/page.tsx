@@ -29,6 +29,7 @@ import { getTemplates, deleteTemplate } from "@/actions/recurring";
 import { addHouseholdTag } from "@/actions/household";
 import { createTransaction } from "@/actions/transaction";
 import { TemplateModal } from "@/components/recurring/recurring-modal";
+import { AddExpenseModal } from "@/components/transactions/add-expense-modal";
 import { toast } from "sonner";
 import { fetchAuthSession } from "aws-amplify/auth";
 
@@ -42,43 +43,14 @@ export default function RecurringPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [templateToDelete, setTemplateToDelete] = useState<any>(null);
+  const [postModalData, setPostModalData] = useState<any>(null);
 
   const loadTemplates = () => {
     mutateTemplates();
   };
 
-  const handlePostNow = async (template: any) => {
-    if (!activeHousehold?.householdId || !currentUserId) return;
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-      if (!token) return;
-
-      await createTransaction(token, activeHousehold.householdId, {
-        amount: template.amount,
-        description: template.description,
-        category: template.transactionType === "INCOME" ? "Income" : template.category,
-        transactionType: template.transactionType || "EXPENSE",
-        isShared: template.isShared || false,
-        splitType: template.isShared ? (template.splitType || "NONE") : "NONE",
-        splits: template.isShared ? (template.splits || {}) : { [currentUserId]: template.amount },
-        date: new Date().toISOString(),
-        paidBy: currentUserId,
-        tags: template.tags || []
-      });
-
-      const existingHouseholdTags = activeHousehold?.metadata?.tags || [];
-      const tagsToAddToHousehold = (template.tags || []).filter((t: string) => !existingHouseholdTags.includes(t));
-      
-      for (const tag of tagsToAddToHousehold) {
-        await addHouseholdTag(token, activeHousehold.householdId, tag);
-      }
-
-      toast(`Success! Generated transaction for ${template.description}.`);
-    } catch (e) {
-      console.error(e);
-      toast("Failed to post transaction.");
-    }
+  const handlePostNow = (template: any) => {
+    setPostModalData(template);
   };
 
   const handleDelete = async (templateId: string) => {
@@ -203,6 +175,26 @@ export default function RecurringPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AddExpenseModal
+        isOpen={!!postModalData}
+        onClose={() => setPostModalData(null)}
+        householdId={activeHousehold?.householdId || ""}
+        currentUserId={currentUserId || undefined}
+        onSuccess={() => {
+          setPostModalData(null);
+          // Optional: redirect to transactions or load templates? The expense is now added.
+        }}
+        initialData={postModalData ? {
+          amount: postModalData.amount,
+          description: postModalData.description,
+          category: postModalData.transactionType === "INCOME" ? "Income" : postModalData.category,
+          transactionType: postModalData.transactionType || "EXPENSE",
+          isShared: postModalData.isShared || false,
+          splitType: postModalData.isShared ? (postModalData.splitType || "NONE") : "NONE",
+          splits: postModalData.isShared ? (postModalData.splits || {}) : (currentUserId ? { [currentUserId]: postModalData.amount } : {}),
+          tags: postModalData.tags || []
+        } : null}
+      />
     </div>
   );
 }

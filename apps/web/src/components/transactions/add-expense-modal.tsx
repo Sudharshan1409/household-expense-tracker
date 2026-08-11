@@ -21,6 +21,10 @@ export interface ScannedReceiptData {
   date?: string;
   tags?: string[];
   file?: File | null;
+  transactionType?: "EXPENSE" | "INCOME";
+  isShared?: boolean;
+  splitType?: "EQUAL" | "PERCENTAGE" | "EXACT" | "NONE";
+  splits?: Record<string, number>;
 }
 
 interface AddExpenseModalProps {
@@ -59,8 +63,10 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [magicText, setMagicText] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const loadMembers = async () => {
     try {
@@ -105,6 +111,12 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setReceiptFile(initialData?.file || null);
       setAiSuggestedTags(initialData?.tags || []);
       setMagicText("");
+      
+      if (initialData?.transactionType) setTransactionType(initialData.transactionType);
+      if (initialData?.isShared !== undefined) setIsShared(initialData.isShared);
+      if (initialData?.splitType && initialData.splitType !== "NONE") setSplitType(initialData.splitType);
+      if (initialData?.splits) setSplits(initialData.splits);
+
       try {
         const stored = localStorage.getItem("recent_tags");
         if (stored) setRecentTags(JSON.parse(stored));
@@ -163,41 +175,81 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
     }
   };
 
-  const toggleVoiceInput = () => {
-    if (isListening) {
-      if (recognitionRef.current) recognitionRef.current.stop();
+  const toggleVoiceInput = async () => {
+    if (isListening && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
       setIsListening(false);
       return;
     }
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error("Speech recognition is not supported in this browser.");
-      return;
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        setIsProcessingAudio(true);
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          try {
+            const base64data = (reader.result as string).split(',')[1];
+            
+            const res = await fetch("/api/ai/parse-audio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                audioBase64: base64data,
+                mimeType: audioBlob.type,
+                categories: activeHousehold?.metadata?.categories || [],
+                tags: activeHousehold?.metadata?.tags || [],
+              }),
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.ok) throw new Error(json.error || "Failed to process audio");
+
+            const data = json.data;
+            if (data.transcript) setMagicText(data.transcript);
+            if (data.amount !== undefined && data.amount !== 0) setAmount(String(data.amount));
+            if (data.description) setDescription(data.description);
+            if (data.category) setCategory(data.category);
+            if (data.tags && Array.isArray(data.tags)) setAiSuggestedTags(data.tags);
+            
+            if (data.date && data.date.includes("T")) {
+              setDatetime(data.date);
+            } else {
+              const d = new Date();
+              setDatetime(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+            }
+
+            toast.success("✨ Voice Entry Applied!");
+          } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Could not parse audio");
+          } finally {
+            setIsProcessingAudio(false);
+          }
+        };
+      };
+      
+      mediaRecorder.start();
+      setIsListening(true);
+      setMagicText(""); // Clear text to indicate it's listening
+    } catch (err) {
+      console.error("Mic error:", err);
+      toast.error("Microphone permission denied or not available.");
     }
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0])
-        .map((result: any) => result.transcript)
-        .join('');
-      setMagicText(transcript);
-    };
-    recognition.onerror = (event: any) => {
-      console.error("Speech Recognition Error:", event.error, event.message);
-      setIsListening(false);
-      if (event.error !== 'no-speech') {
-        toast.error(`Microphone error: ${event.error}. Note: Brave browser blocks this feature by default.`);
-      }
-    };
-    recognition.onend = () => setIsListening(false);
-    
-    recognition.start();
   };
 
   if (!isOpen) return null;
@@ -347,24 +399,28 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                       }
                     }}
                     disabled={isMagicLoading || isLoading}
-                    className="flex h-11 w-full rounded-lg border border-purple-500/30 bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition-all"
+                    className="flex h-11 w-full rounded-lg border border-purple-500/30 bg-background/50 pl-3 pr-10 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition-all"
                   />
                   <button
                     type="button"
                     onClick={toggleVoiceInput}
-                    disabled={isMagicLoading || isLoading}
+                    disabled={isMagicLoading || isLoading || isProcessingAudio}
                     className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors ${
                       isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                     title={isListening ? "Stop listening" : "Start Voice Input"}
                   >
-                    <Mic className="h-4 w-4" />
+                    {isProcessingAudio ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 <Button 
                   type="button" 
                   onClick={handleMagicEntry}
-                  disabled={!magicText.trim() || isMagicLoading}
+                  disabled={!magicText.trim() || isMagicLoading || isListening || isProcessingAudio}
                   className="h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shrink-0 shadow-sm"
                 >
                   {isMagicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fill"}

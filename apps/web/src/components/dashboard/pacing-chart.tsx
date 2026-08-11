@@ -151,6 +151,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
                 tickFormatter={(val) => `${val}`}
               />
               <YAxis 
+                domain={['dataMin', 'dataMax']}
                 tickLine={false} 
                 axisLine={false}
                 tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
