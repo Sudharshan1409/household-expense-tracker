@@ -486,8 +486,8 @@ export async function updateSavingsData(idToken: string, householdId: string, sa
     TableName: TABLE_NAME,
     KeyConditionExpression: "PK = :pk AND SK = :sk",
     ExpressionAttributeValues: {
-      ":pk": `USER#${user.userId}`,
-      ":sk": `MEMBERSHIP#${householdId}`,
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `MEMBER#${user.userId}`,
     },
   });
   const membershipRes = await db.send(membershipCommand);
