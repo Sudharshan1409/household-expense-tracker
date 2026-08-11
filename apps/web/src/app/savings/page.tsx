@@ -13,6 +13,8 @@ import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTransactionsFromDate } from "@/actions/transaction";
 import { subMonths, startOfMonth } from "date-fns";
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { Button } from "@/components/ui/button";
+import { Check, X, Edit2, Zap } from "lucide-react";
 
 const formatINR = (val: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -45,6 +47,48 @@ export default function SavingsPage() {
     activeHousehold?.householdId,
     [range.startDate.toISOString()]
   );
+
+  const [individualGoal, setIndividualGoal] = useState({ name: "Personal Milestone", amount: 500000 });
+  const [householdGoal, setHouseholdGoal] = useState({ name: "Household Milestone", amount: 1000000 });
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [tempGoalName, setTempGoalName] = useState("");
+  const [tempGoalAmount, setTempGoalAmount] = useState("");
+
+  useEffect(() => {
+    if (activeHousehold?.householdId && currentUserId) {
+      const indKey = `savings_goal_${activeHousehold.householdId}_${currentUserId}`;
+      const hhKey = `savings_goal_${activeHousehold.householdId}_household`;
+      
+      const savedInd = localStorage.getItem(indKey);
+      if (savedInd) setIndividualGoal(JSON.parse(savedInd));
+      
+      const savedHh = localStorage.getItem(hhKey);
+      if (savedHh) setHouseholdGoal(JSON.parse(savedHh));
+    }
+  }, [activeHousehold?.householdId, currentUserId]);
+
+  const handleEditGoal = () => {
+    const currentGoal = viewMode === "individual" ? individualGoal : householdGoal;
+    setTempGoalName(currentGoal.name);
+    setTempGoalAmount(currentGoal.amount.toString());
+    setIsEditingGoal(true);
+  };
+
+  const saveGoal = () => {
+    if (!tempGoalName || !tempGoalAmount) return;
+    const amt = parseInt(tempGoalAmount.replace(/[^0-9]/g, ""), 10);
+    if (isNaN(amt) || amt <= 0) return;
+
+    const newGoal = { name: tempGoalName, amount: amt };
+    if (viewMode === "individual") {
+      setIndividualGoal(newGoal);
+      localStorage.setItem(`savings_goal_${activeHousehold?.householdId}_${currentUserId}`, JSON.stringify(newGoal));
+    } else {
+      setHouseholdGoal(newGoal);
+      localStorage.setItem(`savings_goal_${activeHousehold?.householdId}_household`, JSON.stringify(newGoal));
+    }
+    setIsEditingGoal(false);
+  };
 
   if (isHouseholdLoading) {
     return <PageLoader title="Loading savings data..." />;
@@ -103,9 +147,13 @@ export default function SavingsPage() {
   
   const projectedAnnualSavings = (mySavings / monthsInPeriod) * 12;
 
-  // 3. Savings Goal Tracker (Mock goal of 5 Lakhs for demonstration)
-  const SAVINGS_GOAL = 500000; 
-  const goalProgress = Math.min((Math.max(mySavings, 0) / SAVINGS_GOAL) * 100, 100);
+  // 3. Savings Goal Tracker
+  const currentGoal = viewMode === "individual" ? individualGoal : householdGoal;
+  const goalProgress = Math.min((Math.max(mySavings, 0) / currentGoal.amount) * 100, 100);
+
+  // 4. Emergency Runway Calculator
+  const avgMonthlySpend = monthsInPeriod > 0 ? mySpend / monthsInPeriod : mySpend;
+  const emergencyRunwayMonths = avgMonthlySpend > 0 ? mySavings / avgMonthlySpend : 0;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -392,43 +440,122 @@ export default function SavingsPage() {
 
               {/* Savings Goal Tracker */}
               <motion.div 
-                className="rounded-xl border bg-card p-6 shadow-sm flex-1 flex flex-col justify-center"
+                className="rounded-xl border bg-card p-6 shadow-sm flex-1 flex flex-col justify-center relative group"
                 variants={{
                   hidden: { opacity: 0, y: 20 },
                   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
                 }}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-amber-500" />
-                    <h2 className="text-lg font-semibold tracking-tight">Milestone Goal</h2>
+                {!isEditingGoal ? (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Award className="h-5 w-5 text-amber-500" />
+                        <h2 className="text-lg font-semibold tracking-tight">{currentGoal.name}</h2>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {goalProgress.toFixed(0)}%
+                        </span>
+                        <button 
+                          onClick={handleEditGoal}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground"
+                          title="Edit Goal"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
+                        <motion.div 
+                          className="h-full bg-emerald-500 rounded-full" 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${goalProgress}%` }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                          ₹{Math.max(mySavings, 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-muted-foreground">
+                          Target: ₹{currentGoal.amount.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      {goalProgress >= 100 
+                        ? "Goal Achieved! Time to set a new target. 🎉"
+                        : `You are tracking towards your ${currentGoal.name} milestone. Keep it up!`}
+                    </p>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Award className="h-5 w-5 text-amber-500" />
+                      <h2 className="text-lg font-semibold tracking-tight">Edit Goal</h2>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Goal Name</label>
+                        <input 
+                          value={tempGoalName} 
+                          onChange={(e) => setTempGoalName(e.target.value)} 
+                          placeholder="e.g., Europe Trip" 
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Target Amount (₹)</label>
+                        <input 
+                          value={tempGoalAmount} 
+                          onChange={(e) => setTempGoalAmount(e.target.value)} 
+                          placeholder="500000" 
+                          type="number"
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button size="sm" onClick={saveGoal} className="w-full gap-1">
+                          <Check className="h-4 w-4" /> Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setIsEditingGoal(false)} className="w-full gap-1">
+                          <X className="h-4 w-4" /> Cancel
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {goalProgress.toFixed(0)}%
-                  </span>
+                )}
+              </motion.div>
+
+              {/* Emergency Runway Calculator */}
+              <motion.div 
+                className="rounded-xl border bg-card p-6 shadow-sm flex flex-col justify-center relative overflow-hidden"
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                }}
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <Zap className="h-24 w-24" />
                 </div>
-                
-                <div className="space-y-3">
-                  <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
-                    <motion.div 
-                      className="h-full bg-emerald-500 rounded-full" 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${goalProgress}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                      ₹{Math.max(mySavings, 0).toFixed(0)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      Target: ₹{SAVINGS_GOAL.toLocaleString()}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2 mb-4 relative z-10">
+                  <ShieldCheck className="h-5 w-5 text-purple-500" />
+                  <h2 className="text-lg font-semibold tracking-tight">Emergency Runway</h2>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  You are tracking towards your ₹5 Lakh savings milestone. Keep it up!
-                </p>
+                <div className="relative z-10">
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-4xl font-bold tracking-tight text-purple-600 dark:text-purple-400">
+                      {Math.max(0, emergencyRunwayMonths).toFixed(1)}
+                    </div>
+                    <span className="text-xl font-semibold text-muted-foreground">Months</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    If your income stopped today, your current savings could fund your exact lifestyle for this long.
+                  </p>
+                </div>
               </motion.div>
 
             </div>
