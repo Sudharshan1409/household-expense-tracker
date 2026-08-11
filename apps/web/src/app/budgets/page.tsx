@@ -182,6 +182,18 @@ export default function BudgetsPage() {
   const myBudgetNum = activeHousehold?.monthlyBudget || 0;
   const myProgress = myBudgetNum > 0 ? (totalMySpend / myBudgetNum) * 100 : 0;
 
+  // Date and Daily calculations
+  const isCurrentMonth = selectedMonth === getISTMonthString();
+  const daysInMonth = new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]), 0).getDate();
+  const currentDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
+  const daysLeft = daysInMonth - currentDay + 1;
+
+  const householdBudgetRemaining = overallBudgetNum - totalHouseholdSpend;
+  const householdDailyLimit = (overallBudgetNum > 0 && householdBudgetRemaining > 0 && isCurrentMonth) ? householdBudgetRemaining / daysLeft : 0;
+
+  const myBudgetRemaining = myBudgetNum - totalMySpend;
+  const myDailyLimit = (myBudgetNum > 0 && myBudgetRemaining > 0 && isCurrentMonth) ? myBudgetRemaining / daysLeft : 0;
+
   const formatPercentage = (actual: number, budget: number) => {
     if (budget <= 0) return "0%";
     const pct = (actual / budget) * 100;
@@ -261,13 +273,24 @@ export default function BudgetsPage() {
                 <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
                 <span className="text-muted-foreground">{formatPercentage(totalHouseholdSpend, overallBudgetNum)}</span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(overallProgress, 100)}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  className={`h-full rounded-full ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
-                />
+              <div className="space-y-1.5">
+                <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(overallProgress, 100)}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className={`h-full rounded-full ${overallProgress > 100 ? 'bg-destructive' : overallProgress > 80 ? 'bg-amber-500' : 'bg-primary'}`}
+                  />
+                </div>
+                {overallBudgetNum > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {householdBudgetRemaining < 0 
+                      ? <span className="text-destructive font-medium">Over by ₹{Math.abs(householdBudgetRemaining).toLocaleString()}</span>
+                      : `₹${householdBudgetRemaining.toLocaleString()} left`
+                    }
+                    {isCurrentMonth && householdDailyLimit > 0 && ` • ₹${Math.round(householdDailyLimit).toLocaleString()}/day`}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -321,13 +344,24 @@ export default function BudgetsPage() {
                 <span>₹{totalMySpend.toLocaleString()} spent</span>
                 <span className="text-muted-foreground">{formatPercentage(totalMySpend, myBudgetNum)}</span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(myProgress, 100)}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  className={`h-full rounded-full ${myProgress > 100 ? 'bg-destructive' : myProgress > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                />
+              <div className="space-y-1.5">
+                <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(myProgress, 100)}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className={`h-full rounded-full ${myProgress > 100 ? 'bg-destructive' : myProgress > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                  />
+                </div>
+                {myBudgetNum > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {myBudgetRemaining < 0 
+                      ? <span className="text-destructive font-medium">Over by ₹{Math.abs(myBudgetRemaining).toLocaleString()}</span>
+                      : `₹${myBudgetRemaining.toLocaleString()} left`
+                    }
+                    {isCurrentMonth && myDailyLimit > 0 && ` • ₹${Math.round(myDailyLimit).toLocaleString()}/day`}
+                  </div>
+                )}
               </div>
             </div>
           </div>
