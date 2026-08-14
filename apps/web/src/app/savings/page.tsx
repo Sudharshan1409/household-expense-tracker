@@ -17,6 +17,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Check, X, Edit2, Zap } from "lucide-react";
+import confetti from "canvas-confetti";
 
 const formatINR = (val: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -83,6 +84,7 @@ export default function SavingsPage() {
   const [tempGoalName, setTempGoalName] = useState("");
   const [tempGoalAmount, setTempGoalAmount] = useState("");
   const [tempGoalDate, setTempGoalDate] = useState("");
+  const [completedGoals, setCompletedGoals] = useState<string[]>([]);
 
   const saveToDB = async (ind: Goal[], hh: Goal[], other: Goal[]) => {
     if (!activeHousehold?.householdId) return;
@@ -138,6 +140,24 @@ export default function SavingsPage() {
       setPureHouseholdGoals(newList);
       saveToDB(individualGoals, newList, allOtherIndividualGoals);
     }
+  };
+
+  const handleCompleteGoal = (goalId: string, goalType: string) => {
+    if (goalType === "mine") {
+      const newList = individualGoals.filter(g => g.id !== goalId);
+      saveToDB(newList, pureHouseholdGoals, allOtherIndividualGoals);
+    } else {
+      const newList = pureHouseholdGoals.filter(g => g.id !== goalId);
+      saveToDB(individualGoals, newList, allOtherIndividualGoals);
+    }
+    
+    setCompletedGoals(prev => [...prev, goalId]);
+    
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
   };
 
   const saveGoal = () => {
@@ -398,15 +418,18 @@ export default function SavingsPage() {
       (goal as any).allocated = allocated;
     }
     
-    const progress = Math.min((allocated / goal.amount) * 100, 100);
+    const isJustCompleted = completedGoals.includes(goal.id);
+    let progress = Math.min((allocated / goal.amount) * 100, 100);
     
     let trackingMessage = "";
     let trackingColor = "text-muted-foreground";
     let requiredMonthlySavings = 0;
     
-    if (progress >= 100) {
+    if (isJustCompleted || progress >= 100) {
       trackingMessage = "Goal Achieved! 🎉";
       trackingColor = "text-emerald-500";
+      progress = 100;
+      if (isJustCompleted) allocated = goal.amount;
     } else {
       const target = new Date(goal.targetDate);
       const now = new Date();
@@ -791,7 +814,9 @@ export default function SavingsPage() {
                       className="group relative rounded-xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:shadow-md cursor-pointer hover:border-border"
                       onClick={() => setExpandedGoalId(expandedGoalId === goal.id ? null : goal.id)}
                     >
-                      {editingGoalId !== goal.id ? (
+                      {(() => {
+                        const isJustCompleted = completedGoals.includes(goal.id);
+                        return editingGoalId !== goal.id ? (
                         <>
                           <div className="flex items-start justify-between mb-4 gap-2">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
@@ -813,6 +838,15 @@ export default function SavingsPage() {
                               </span>
                               {goal.type !== "other" && (
                                 <>
+                                  {!isJustCompleted && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); handleCompleteGoal(goal.id, goal.type as string); }}
+                                      className="text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 p-1.5 rounded-md transition-colors mr-1"
+                                      title="Mark as Completed"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  )}
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); handleEditGoal(goal); }}
                                     className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 rounded-md transition-colors"
@@ -902,7 +936,8 @@ export default function SavingsPage() {
                         </>
                       ) : (
                         renderEditGoalForm()
-                      )}
+                      );
+                      })()}
                     </motion.div>
                   ))}
                   </div>

@@ -33,6 +33,7 @@ export default function ReportsPage() {
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getISTMonthString());
   const [viewMode, setViewMode] = useState<"individual" | "household">("individual");
+  const [spendType, setSpendType] = useState<"all" | "variable">("variable");
 
   const handleExportCSV = () => {
     if (transactions.length === 0) return;
@@ -151,8 +152,11 @@ export default function ReportsPage() {
     { name: 'Expense', amount: mySpend, fill: '#ef4444' }
   ];
   
+  const fixedCategories = activeHousehold?.fixedCategories || [];
+  const chartExpenseTxs = spendType === "all" ? expenseTxs : expenseTxs.filter(tx => !fixedCategories.includes(tx.category));
+
   // 1. Category Data
-  const categoryMap = expenseTxs.reduce((acc, tx) => {
+  const categoryMap = chartExpenseTxs.reduce((acc, tx) => {
     const cat = tx.category || "Other";
     const myShare = getSpendShare(tx);
     if (myShare > 0) {
@@ -165,7 +169,7 @@ export default function ReportsPage() {
     .map(([name, value]) => ({ name, value }));
 
   // 2. Member Data (Who paid)
-  const memberMap = expenseTxs.reduce((acc, tx) => {
+  const memberMap = chartExpenseTxs.reduce((acc, tx) => {
     const shareToCount = getSpendShare(tx);
     if (shareToCount > 0) {
       const mName = getMemberName(tx.paidBy);
@@ -179,7 +183,7 @@ export default function ReportsPage() {
 
   // 3. Daily Trend Data
   const dailyMap: Record<string, number> = {};
-  [...expenseTxs].reverse().forEach(tx => {
+  [...chartExpenseTxs].reverse().forEach(tx => {
     const dateStr = format(new Date(tx.date || tx.createdAt), "dd/MM/yyyy");
     const myShare = getSpendShare(tx);
     dailyMap[dateStr] = (dailyMap[dateStr] || 0) + myShare;
@@ -187,7 +191,7 @@ export default function ReportsPage() {
   const dailyData = Object.entries(dailyMap).map(([date, amount]) => ({ date, amount }));
 
   // 4. Tags Data
-  const tagMap = expenseTxs.reduce((acc, tx) => {
+  const tagMap = chartExpenseTxs.reduce((acc, tx) => {
     const myShare = getSpendShare(tx);
     if (myShare > 0 && tx.tags && tx.tags.length > 0) {
       tx.tags.forEach((t: string) => {
@@ -249,6 +253,30 @@ export default function ReportsPage() {
               Household Total
             </button>
           </div>
+          {(activeHousehold?.fixedCategories || []).length > 0 && (
+            <div className="flex bg-muted/50 p-1 rounded-lg border">
+              <button
+                onClick={() => setSpendType("all")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  spendType === "all"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All Expenses
+              </button>
+              <button
+                onClick={() => setSpendType("variable")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  spendType === "variable"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Variable Only
+              </button>
+            </div>
+          )}
           <HouseholdSwitcher />
         </div>
       </div>

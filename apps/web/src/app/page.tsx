@@ -77,19 +77,30 @@ export default function Dashboard() {
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
   
   const totalSpend = expenseTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  
+  const fixedCategories = activeHousehold?.fixedCategories || [];
+  const totalFixedSpend = expenseTxs
+    .filter(tx => fixedCategories.includes(tx.category))
+    .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  const totalVariableSpend = totalSpend - totalFixedSpend;
+
   const mySpend = expenseTxs.reduce((sum, tx) => sum + (tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  const myVariableSpend = expenseTxs
+    .filter(tx => !fixedCategories.includes(tx.category))
+    .reduce((sum, tx) => sum + (tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
+  
   const myIncome = incomeTxs.reduce((sum, tx) => sum + (tx.splits?.[currentUserId || ""] || (tx.paidBy === currentUserId ? tx.amount : 0)), 0);
   const mySavings = myIncome - mySpend;
 
-  const budgetRemaining = (myBudget || 0) - mySpend;
-  const budgetProgress = myBudget ? Math.min((mySpend / myBudget) * 100, 100) : 0;
+  const budgetRemaining = (myBudget || 0) - myVariableSpend;
+  const budgetProgress = myBudget ? Math.min((myVariableSpend / myBudget) * 100, 100) : 0;
 
   // Date and Daily calculations
   const daysInMonth = new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]), 0).getDate();
   const isCurrentMonth = selectedMonth === getISTMonthString();
   const currentDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
   const daysLeft = daysInMonth - currentDay + 1;
-  const avgDailySpend = currentDay > 0 ? totalSpend / currentDay : 0;
+  const avgDailySpend = currentDay > 0 ? totalVariableSpend / currentDay : 0;
   const dailySpendLimit = (myBudget && budgetRemaining > 0 && isCurrentMonth) ? budgetRemaining / daysLeft : 0;
 
   // Previous Month metrics
@@ -199,15 +210,26 @@ export default function Dashboard() {
               <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 <AnimatedNumber value={totalSpend} format={formatINR} />
               </div>
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex flex-col items-end gap-1 text-xs">
                 {spendDiff !== 0 ? (
                   <span className={`inline-flex items-center font-semibold ${spendDiff <= 0 ? "text-emerald-500" : "text-destructive"}`}>
-                    {spendDiff > 0 ? "+" : "-"}{Math.abs(spendDiff).toFixed(1)}%
+                    {spendDiff > 0 ? "+" : "-"}{Math.abs(spendDiff).toFixed(1)}% <span className="text-muted-foreground font-normal ml-1">vs last month</span>
                   </span>
                 ) : (
-                  <span className="font-semibold text-muted-foreground">+0%</span>
-                )}{" "}
-                <span className="text-muted-foreground">vs last month</span>
+                  <span className="font-semibold text-muted-foreground">+0% <span className="font-normal">vs last month</span></span>
+                )}
+                {fixedCategories.length > 0 && (
+                  <div className="flex items-center gap-3 text-muted-foreground mt-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+                      <span>Fixed: {formatINR(totalFixedSpend)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <span>Variable: {formatINR(totalVariableSpend)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -255,7 +277,7 @@ export default function Dashboard() {
 
           <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Budget Left</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Variable Budget Left</span>
               <Target className="h-4 w-4 text-muted-foreground shrink-0" />
             </div>
             <div>
@@ -288,7 +310,8 @@ export default function Dashboard() {
           budget={myBudget} 
           overallBudget={activeHousehold?.overallBudget}
           currentUserId={currentUserId}
-          selectedMonth={selectedMonth} 
+          selectedMonth={selectedMonth}
+          fixedCategories={activeHousehold?.fixedCategories || []}
         />
       </div>
 

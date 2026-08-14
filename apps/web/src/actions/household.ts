@@ -339,6 +339,37 @@ export async function updateHouseholdCategories(idToken: string, householdId: st
 }
 
 /**
+ * Update household fixed categories (Owner or Admin).
+ */
+export async function updateHouseholdFixedCategories(idToken: string, householdId: string, fixedCategories: string[]) {
+  const user = await verifyToken(idToken);
+  await verifyOwnerOrAdmin(user.userId, householdId);
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  const existing = await db.send(existingCommand);
+  const metadata = existing.Items?.[0] || {};
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      fixedCategories,
+      updatedAt: new Date().toISOString(),
+    },
+  });
+
+  await db.send(command);
+  return true;
+}
+
+/**
  * Remove a member from a household (Owner only).
  */
 export async function removeMember(idToken: string, householdId: string, targetUserId: string) {

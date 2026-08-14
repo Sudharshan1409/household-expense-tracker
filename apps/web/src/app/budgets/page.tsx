@@ -34,6 +34,7 @@ export default function BudgetsPage() {
   // My Budget State
   const [isEditingMyBudget, setIsEditingMyBudget] = useState(false);
   const [myBudgetInput, setMyBudgetInput] = useState("");
+  const [activeTab, setActiveTab] = useState<"variable" | "fixed">("variable");
 
   useEffect(() => {
     if (activeHousehold?.monthlyBudget) {
@@ -65,17 +66,19 @@ export default function BudgetsPage() {
   useEffect(() => {
     // Set overall budget from context
     setOverallBudget(activeHousehold?.overallBudget?.toString() || "50000");
+  }, [activeHousehold?.overallBudget]);
 
+  useEffect(() => {
     // Sync individual category budgets
     if (mems && currentUserId) {
       const me = mems.find((m: any) => m.userId === currentUserId);
       if (me?.categoryBudgets) {
-        setCategoryBudgets(me.categoryBudgets);
+        setCategoryBudgets(prev => JSON.stringify(prev) === JSON.stringify(me.categoryBudgets) ? prev : me.categoryBudgets);
       } else {
-        setCategoryBudgets({});
+        setCategoryBudgets(prev => Object.keys(prev).length === 0 ? prev : {});
       }
     }
-  }, [activeHousehold?.overallBudget, mems, currentUserId]);
+  }, [mems, currentUserId]);
 
   const handleSaveMyBudget = async () => {
     if (!activeHousehold?.householdId || !currentUserId) return;
@@ -100,6 +103,7 @@ export default function BudgetsPage() {
       setIsSaving(false);
     }
   };
+
 
   const handleSaveOverallBudget = async () => {
     if (!activeHousehold?.householdId) return;
@@ -174,8 +178,21 @@ export default function BudgetsPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const totalMySpend = Object.values(actualsMap).reduce((a: number, b: any) => a + (b as number), 0);
-  const totalHouseholdSpend = expenseTxs.reduce((a: number, b: any) => a + (b.amount || 0), 0);
+  const fixedCategories = activeHousehold?.fixedCategories || [];
+  const variableExpenseTxs = expenseTxs.filter(tx => !fixedCategories.includes(tx.category));
+
+  const totalMySpend = variableExpenseTxs.reduce((acc: number, tx) => {
+    const myShare = tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0);
+    return acc + myShare;
+  }, 0);
+  const totalHouseholdSpend = variableExpenseTxs.reduce((a: number, b: any) => a + (b.amount || 0), 0);
+  
+  const grossTotalHouseholdSpend = expenseTxs.reduce((a: number, b: any) => a + (b.amount || 0), 0);
+  const grossTotalMySpend = expenseTxs.reduce((acc: number, tx) => {
+    const myShare = tx.isShared ? (tx.splits?.[currentUserId || ""] || 0) : (tx.paidBy === currentUserId ? tx.amount : 0);
+    return acc + myShare;
+  }, 0);
+
   const overallBudgetNum = parseFloat(overallBudget) || 0;
   const overallProgress = overallBudgetNum > 0 ? (totalHouseholdSpend / overallBudgetNum) * 100 : 0;
   
@@ -269,9 +286,16 @@ export default function BudgetsPage() {
             </div>
             
             <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between text-sm font-medium">
-                <span>₹{totalHouseholdSpend.toLocaleString()} spent</span>
-                <span className="text-muted-foreground">{formatPercentage(totalHouseholdSpend, overallBudgetNum)}</span>
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <span className="text-sm font-medium">₹{totalHouseholdSpend.toLocaleString()} spent</span>
+                  {fixedCategories.length > 0 && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      (Total including fixed: ₹{grossTotalHouseholdSpend.toLocaleString()})
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">{formatPercentage(totalHouseholdSpend, overallBudgetNum)}</span>
               </div>
               <div className="space-y-1.5">
                 <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
@@ -340,9 +364,16 @@ export default function BudgetsPage() {
             </div>
             
             <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between text-sm font-medium">
-                <span>₹{totalMySpend.toLocaleString()} spent</span>
-                <span className="text-muted-foreground">{formatPercentage(totalMySpend, myBudgetNum)}</span>
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <span className="text-sm font-medium">₹{totalMySpend.toLocaleString()} spent</span>
+                  {fixedCategories.length > 0 && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      (Total including fixed: ₹{grossTotalMySpend.toLocaleString()})
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">{formatPercentage(totalMySpend, myBudgetNum)}</span>
               </div>
               <div className="space-y-1.5">
                 <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
@@ -402,75 +433,112 @@ export default function BudgetsPage() {
             {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {(activeHousehold?.categories || []).map((cat: string) => {
-              const actual = actualsMap[cat] || 0;
-              const budget = categoryBudgets[cat] || 0;
-              const hasBudget = budget > 0;
-              const progress = hasBudget ? (actual / budget) * 100 : 0;
-              const isOver = hasBudget && actual > budget;
-              const isWarning = hasBudget && progress >= 80 && !isOver;
-
-              if (!hasBudget && !isEditing && actual === 0) return null; // Hide completely empty unbudgeted categories unless editing
-
-              return (
-                <div 
-                  key={cat} 
-                  className={`p-4 rounded-xl border bg-card shadow-sm space-y-3 ${!isEditing ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
-                  onClick={() => !isEditing && setSelectedCategory(cat)}
+          <div className="space-y-8">
+            {/* Tabs for Variable/Fixed */}
+            {(activeHousehold?.fixedCategories || []).length > 0 && (
+              <div className="flex bg-muted/50 p-1 rounded-lg w-full max-w-sm mb-6">
+                <button
+                  onClick={() => setActiveTab("variable")}
+                  className={`flex-1 text-sm font-medium py-2 rounded-md transition-colors ${activeTab === "variable" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{cat}</span>
-                    {isEditing ? (
-                      <div className="flex items-center gap-2 w-32 relative">
-                        <input
-                          type="number"
-                          className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-right"
-                          placeholder="0"
-                          value={categoryBudgets[cat] || ""}
-                          onChange={(e) => updateBudget(cat, e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-sm font-semibold text-muted-foreground">
-                        {hasBudget ? `Budget: ₹${budget.toFixed(2)}` : "No Budget Set"}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {!isEditing && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className={isOver ? "text-destructive font-medium flex items-center gap-1" : ""}>
-                          {isOver && <AlertTriangle className="h-3 w-3" />}
-                          ₹{actual.toFixed(2)} spent
-                        </span>
-                        {hasBudget && (
-                          <span className="text-muted-foreground">
-                            {formatPercentage(actual, budget)}
+                  Variable Budgets
+                </button>
+                <button
+                  onClick={() => setActiveTab("fixed")}
+                  className={`flex-1 text-sm font-medium py-2 rounded-md transition-colors ${activeTab === "fixed" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Fixed Expenses
+                </button>
+              </div>
+            )}
+
+            {/* Budgets Grid */}
+            <div>
+              <div className="flex items-end justify-between mb-4">
+                <h3 className="text-lg font-medium">
+                  {activeTab === "variable" ? "Variable Budgets" : "Fixed Expenses & Debt"}
+                </h3>
+                <span className="text-sm font-medium text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-md">
+                  {activeTab === "variable" 
+                    ? `₹${totalMySpend.toLocaleString()} spent` 
+                    : `₹${(grossTotalMySpend - totalMySpend).toLocaleString()} spent`}
+                </span>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                {(activeHousehold?.categories || [])
+                  .filter(cat => activeTab === "fixed" 
+                    ? (activeHousehold?.fixedCategories || []).includes(cat) 
+                    : !(activeHousehold?.fixedCategories || []).includes(cat))
+                  .map((cat: string) => {
+                  const actual = actualsMap[cat] || 0;
+                  const budget = categoryBudgets[cat] || 0;
+                  const hasBudget = budget > 0;
+                  const progress = hasBudget ? (actual / budget) * 100 : 0;
+                  const isOver = hasBudget && actual > budget;
+                  const isWarning = hasBudget && progress >= 80 && !isOver;
+
+                  if (!hasBudget && !isEditing && actual === 0) return null; // Hide completely empty unbudgeted categories unless editing
+
+                  return (
+                    <div 
+                      key={cat} 
+                      className={`p-4 rounded-xl border bg-card shadow-sm space-y-3 ${!isEditing ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
+                      onClick={() => !isEditing && setSelectedCategory(cat)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{cat}</span>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2 w-32 relative">
+                            <input
+                              type="number"
+                              className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-right"
+                              placeholder="0"
+                              value={categoryBudgets[cat] || ""}
+                              onChange={(e) => updateBudget(cat, e.target.value)}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            {hasBudget ? `Budget: ₹${budget.toFixed(2)}` : "No Budget Set"}
                           </span>
                         )}
                       </div>
                       
-                      {hasBudget ? (
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(progress, 100)}%` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                            className={`h-full rounded-full ${isOver ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-2 w-full rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                          <div className="h-full bg-primary/20" style={{ width: '100%' }} />
+                      {!isEditing && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className={isOver ? "text-destructive font-medium flex items-center gap-1" : ""}>
+                              {isOver && <AlertTriangle className="h-3 w-3" />}
+                              ₹{actual.toFixed(2)} spent
+                            </span>
+                            {hasBudget && (
+                              <span className="text-muted-foreground">
+                                {formatPercentage(actual, budget)}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {hasBudget ? (
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(progress, 100)}%` }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                                className={`h-full rounded-full ${isOver ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-2 w-full rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                              <div className="h-full bg-primary/20" style={{ width: '100%' }} />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>

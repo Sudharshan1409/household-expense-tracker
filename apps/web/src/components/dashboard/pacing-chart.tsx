@@ -9,9 +9,10 @@ interface PacingChartProps {
   overallBudget?: number;
   currentUserId?: string | null;
   selectedMonth: string; // "YYYY-MM" format
+  fixedCategories?: string[];
 }
 
-export function PacingChart({ transactions, prevTransactions, budget, overallBudget, currentUserId, selectedMonth }: PacingChartProps) {
+export function PacingChart({ transactions, prevTransactions, budget, overallBudget, currentUserId, selectedMonth, fixedCategories = [] }: PacingChartProps) {
   const [viewMode, setViewMode] = useState<"household" | "individual">("household");
 
   const chartData = useMemo(() => {
@@ -32,9 +33,9 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     const isCurrentMonth = year === now.getUTCFullYear() && month === (now.getUTCMonth() + 1);
     const currentDay = isCurrentMonth ? now.getUTCDate() : daysInMonth;
 
-    // Filter only expenses
-    const expenseTxs = transactions.filter(t => t.transactionType !== "INCOME");
-    const prevExpenseTxs = prevTransactions.filter(t => t.transactionType !== "INCOME");
+    // Filter only expenses and exclude fixed categories
+    const expenseTxs = transactions.filter(t => t.transactionType !== "INCOME" && !fixedCategories.includes(t.category));
+    const prevExpenseTxs = prevTransactions.filter(t => t.transactionType !== "INCOME" && !fixedCategories.includes(t.category));
 
     const hasPrevData = prevExpenseTxs.length > 0;
     const getSpendForTx = (t: any) => {
@@ -130,6 +131,9 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
               {hasGhost 
                 ? `Racing against your ${ghostLabel.replace("Vs. ", "").toLowerCase()}.` 
                 : "Tracking your monthly spend."}
+              {fixedCategories.length > 0 && (
+                <span className="block mt-0.5 text-[11px] opacity-70">* Fixed expenses are excluded from pacing</span>
+              )}
             </p>
           </div>
           {hasGhost && (
