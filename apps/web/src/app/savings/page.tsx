@@ -187,21 +187,11 @@ export default function SavingsPage() {
   }
 
 
-  // Calculate metrics
+  // Calculate metrics for selected range (for top cards)
   let mySpend = 0;
   let myIncome = 0;
-  const userSavingsMap: Record<string, number> = {};
-
   filteredSummaries.forEach((summary: any) => {
     const users = summary.users || {};
-    
-    // For envelope funding / goals
-    for (const [uid, data] of Object.entries(users)) {
-      const uData = data as any;
-      const net = (uData.income || 0) - (uData.spend || 0);
-      userSavingsMap[uid] = (userSavingsMap[uid] || 0) + net;
-    }
-
     if (viewMode === "individual") {
       const myData = users[currentUserId || ""] || { income: 0, spend: 0 };
       myIncome += myData.income || 0;
@@ -217,6 +207,37 @@ export default function SavingsPage() {
 
   const mySavings = myIncome - mySpend;
   const savingsRate = myIncome > 0 ? (mySavings / myIncome) * 100 : 0;
+
+  // Calculate ALL TIME metrics (for Vault and Goals)
+  let allTimeMySpend = 0;
+  let allTimeMyIncome = 0;
+  const allTimeUserSavingsMap: Record<string, number> = {};
+
+  summaries.forEach((summary: any) => {
+    const users = summary.users || {};
+    
+    // For envelope funding / goals
+    for (const [uid, data] of Object.entries(users)) {
+      const uData = data as any;
+      const net = (uData.income || 0) - (uData.spend || 0);
+      allTimeUserSavingsMap[uid] = (allTimeUserSavingsMap[uid] || 0) + net;
+    }
+
+    if (viewMode === "individual") {
+      const myData = users[currentUserId || ""] || { income: 0, spend: 0 };
+      allTimeMyIncome += myData.income || 0;
+      allTimeMySpend += myData.spend || 0;
+    } else {
+      for (const data of Object.values(users)) {
+        const uData = data as any;
+        allTimeMyIncome += uData.income || 0;
+        allTimeMySpend += uData.spend || 0;
+      }
+    }
+  });
+
+  const allTimeMySavings = allTimeMyIncome - allTimeMySpend;
+
   
   // Graph generation
   let cumulativeSavings = 0;
@@ -314,8 +335,8 @@ export default function SavingsPage() {
   
   const projectedAnnualSavings = (mySavings / monthsInPeriod) * 12;
 
-  const householdTracked = Object.values(userSavingsMap).reduce((sum, val) => sum + Math.max(0, val), 0);
-  const totalTrackedSavings = viewMode === "individual" ? Math.max(mySavings, 0) : householdTracked;
+  const householdTracked = Object.values(allTimeUserSavingsMap).reduce((sum, val) => sum + Math.max(0, val), 0);
+  const totalTrackedSavings = viewMode === "individual" ? Math.max(allTimeMySavings, 0) : householdTracked;
   const overallSavings = totalTrackedSavings;
 
   // 3. Savings Goal Tracker (Sequential Funding)
@@ -335,8 +356,8 @@ export default function SavingsPage() {
 
   // Initialize pools for envelope funding
   const userPools: Record<string, number> = {};
-  for (const k in userSavingsMap) {
-    userPools[k] = Math.max(0, userSavingsMap[k]);
+  for (const k in allTimeUserSavingsMap) {
+    userPools[k] = Math.max(0, allTimeUserSavingsMap[k]);
   }
   
   const goalsWithProgress = currentGoalsList.map(goal => {
