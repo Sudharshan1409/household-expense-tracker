@@ -32,9 +32,9 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     const isCurrentMonth = year === now.getUTCFullYear() && month === (now.getUTCMonth() + 1);
     const currentDay = isCurrentMonth ? now.getUTCDate() : daysInMonth;
 
-    // Filter only expenses
-    const expenseTxs = transactions.filter(t => t.transactionType !== "INCOME");
-    const prevExpenseTxs = prevTransactions.filter(t => t.transactionType !== "INCOME");
+    // Filter only expenses and exclude 'loan' category
+    const expenseTxs = transactions.filter(t => t.transactionType !== "INCOME" && t.category?.toLowerCase() !== "loan");
+    const prevExpenseTxs = prevTransactions.filter(t => t.transactionType !== "INCOME" && t.category?.toLowerCase() !== "loan");
 
     const hasPrevData = prevExpenseTxs.length > 0;
     const getSpendForTx = (t: any) => {
@@ -130,6 +130,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
               {hasGhost 
                 ? `Racing against your ${ghostLabel.replace("Vs. ", "").toLowerCase()}.` 
                 : "Tracking your monthly spend."}
+              <span className="block mt-0.5 text-[11px] opacity-70">* Loan expenses are excluded from pacing</span>
             </p>
           </div>
           {hasGhost && (
