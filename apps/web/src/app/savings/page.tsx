@@ -333,10 +333,21 @@ export default function SavingsPage() {
   }
   const avgMonthlySavings = monthsInPeriod > 0 ? mySavings / monthsInPeriod : mySavings;
 
-  // Initialize pools for envelope funding
+  // Calculate ALL TIME savings map specifically for milestone goals
+  const allTimeUserSavingsMap: Record<string, number> = {};
+  summaries.forEach((summary: any) => {
+    const users = summary.users || {};
+    for (const [uid, data] of Object.entries(users)) {
+      const uData = data as any;
+      const net = (uData.income || 0) - (uData.spend || 0);
+      allTimeUserSavingsMap[uid] = (allTimeUserSavingsMap[uid] || 0) + net;
+    }
+  });
+
+  // Initialize pools for envelope funding (using all time data)
   const userPools: Record<string, number> = {};
-  for (const k in userSavingsMap) {
-    userPools[k] = Math.max(0, userSavingsMap[k]);
+  for (const k in allTimeUserSavingsMap) {
+    userPools[k] = Math.max(0, allTimeUserSavingsMap[k]);
   }
   
   const goalsWithProgress = currentGoalsList.map(goal => {
