@@ -558,9 +558,9 @@ export default function DebtPlannerPage() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl text-center min-w-[200px] self-end md:self-auto">
+                  <div className="bg-red-500/10 border border-red-500/20 p-4 md:p-6 rounded-xl text-center w-full md:w-auto md:min-w-[200px]">
                     <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Debt Free By</p>
-                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">{debtFreeDate}</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-600 dark:text-red-400">{debtFreeDate}</p>
                   </div>
                 </div>
               </CardContent>
