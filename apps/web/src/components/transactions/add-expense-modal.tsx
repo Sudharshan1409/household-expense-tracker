@@ -25,6 +25,7 @@ export interface ScannedReceiptData {
   isShared?: boolean;
   splitType?: "EQUAL" | "PERCENTAGE" | "EXACT" | "NONE";
   splits?: Record<string, number>;
+  linkedDebtId?: string;
 }
 
 interface AddExpenseModalProps {
@@ -55,6 +56,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [linkedDebtId, setLinkedDebtId] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,6 +110,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setError("");
       setTags([]);
       setTagInput("");
+      setLinkedDebtId(initialData?.linkedDebtId || "");
       setReceiptFile(initialData?.file || null);
       setAiSuggestedTags(initialData?.tags || []);
       setMagicText("");
@@ -327,6 +330,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         paidBy,
         receiptUrl: finalReceiptUrl,
         tags,
+        linkedDebtId: linkedDebtId || undefined,
       });
 
       confetti({
@@ -519,6 +523,23 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                   </div>
                 )}
               </div>
+              
+              {transactionType === "EXPENSE" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  <label className="text-sm font-medium">Link to Debt (Optional)</label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    value={linkedDebtId}
+                    onChange={(e) => setLinkedDebtId(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="">-- None --</option>
+                    {activeHousehold.metadata.debts.map((d: any) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Tags Input */}

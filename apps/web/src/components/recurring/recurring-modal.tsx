@@ -25,6 +25,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Utilities");
   const [transactionType, setTransactionType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [linkedDebtId, setLinkedDebtId] = useState("");
   
   const [isShared, setIsShared] = useState(false);
   const [splitType, setSplitType] = useState<"EQUAL" | "PERCENTAGE" | "EXACT">("EQUAL");
@@ -67,6 +68,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         setSplitType(existingTemplate.splitType || "EQUAL");
         setSplits(existingTemplate.splits || {});
         setTags(existingTemplate.tags || []);
+        setLinkedDebtId(existingTemplate.linkedDebtId || "");
         setTagInput("");
       } else {
         setDescription("");
@@ -77,6 +79,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         setSplitType("EQUAL");
         setSplits({});
         setTags([]);
+        setLinkedDebtId("");
         setTagInput("");
       }
     }
@@ -126,10 +129,11 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         isShared: transactionType === "EXPENSE" ? isShared : false,
         splitType: (transactionType === "EXPENSE" && isShared) ? splitType : "NONE",
         splits: (transactionType === "EXPENSE" && isShared) ? splits : {},
-        tags
+        tags,
+        linkedDebtId: (transactionType === "EXPENSE" && linkedDebtId) ? linkedDebtId : undefined,
       };
 
-      const existingHouseholdTags = activeHousehold?.metadata?.tags || [];
+      const existingHouseholdTags = activeHousehold?.metadata?.debts || [];
       const tagsToAddToHousehold = tags.filter(t => !existingHouseholdTags.includes(t));
       
       for (const tag of tagsToAddToHousehold) {
@@ -213,19 +217,35 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
             />
           </div>
 
-          {transactionType === "EXPENSE" && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {transactionType === "EXPENSE" ? (
+                activeHousehold?.categories?.map((c: string) => (
+                  <option key={c} value={c}>{c}</option>
+                ))
+              ) : (
+                <option value="Income">Income</option>
+              )}
+            </select>
+          </div>
+
+          {transactionType === "EXPENSE" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
+              <label className="text-sm font-medium">Link to Debt (Optional)</label>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={linkedDebtId}
+                onChange={(e) => setLinkedDebtId(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                {activeHousehold?.categories?.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                )) || (
-                  <option value="Utilities">Utilities</option>
-                )}
+                <option value="">None</option>
+                {activeHousehold.metadata.debts.map((d: any) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
               </select>
             </div>
           )}

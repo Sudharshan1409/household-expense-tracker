@@ -32,6 +32,7 @@ export async function createTemplate(
     splitType?: string;
     splits?: Record<string, number>;
     tags?: string[];
+    linkedDebtId?: string;
   }
 ) {
   const user = await verifyToken(idToken);
@@ -54,6 +55,7 @@ export async function createTemplate(
       splitType: data.splitType || "NONE",
       splits: data.splits || {},
       tags: data.tags || [],
+      linkedDebtId: data.linkedDebtId,
       createdAt: now,
     },
   });
@@ -75,6 +77,7 @@ export async function updateTemplate(
     splitType?: string;
     splits?: Record<string, number>;
     tags?: string[];
+    linkedDebtId?: string;
   }
 ) {
   const user = await verifyToken(idToken);
@@ -95,6 +98,7 @@ export async function updateTemplate(
       splitType: data.splitType || "NONE",
       splits: data.splits || {},
       tags: data.tags || [],
+      linkedDebtId: data.linkedDebtId,
       updatedAt: new Date().toISOString(),
     },
   });

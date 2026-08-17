@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart, Hash } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, Repeat, LineChart, Hash, CreditCard } from "lucide-react";
 import { UserMenu } from "@/components/auth/user-menu";
 
 export function Sidebar() {
@@ -66,6 +66,15 @@ export function Sidebar() {
             >
               <LineChart className="h-4 w-4" />
               Savings
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/debt"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+            >
+              <CreditCard className="h-4 w-4" />
+              Debt Planner
             </Link>
           </li>
           <li>

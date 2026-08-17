@@ -6,7 +6,7 @@ import { X, Receipt, SplitSquareHorizontal, User, Loader2, Trash2 } from "lucide
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getHouseholdMembers } from "@/actions/household";
 import { getDownloadPresignedUrl } from "@/actions/s3";
-import { deleteTransaction, updateTransactionTags } from "@/actions/transaction";
+import { deleteTransaction, updateTransactionTags, updateTransactionDebtLink } from "@/actions/transaction";
 import { addHouseholdTag } from "@/actions/household";
 import { useHousehold } from "@/components/providers/household-provider";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +45,16 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [isEditingTags, setIsEditingTags] = useState(false);
+  
+  const [isEditingDebt, setIsEditingDebt] = useState(false);
+  const [selectedDebtId, setSelectedDebtId] = useState("");
 
   useEffect(() => {
     if (transaction) {
       setTags(transaction.tags || []);
+      setSelectedDebtId(transaction.linkedDebtId || "");
       setIsEditingTags(false);
+      setIsEditingDebt(false);
       setTagInput("");
     }
   }, [transaction]);
@@ -152,6 +157,28 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
     }
   };
 
+  const handleSaveDebtLink = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) return;
+
+      const debtToSave = selectedDebtId === "" ? undefined : selectedDebtId;
+      await updateTransactionDebtLink(token, householdId, transaction.SK, debtToSave);
+      toast.success("Debt link updated");
+      setIsEditingDebt(false);
+      
+      if (onUpdate) {
+        onUpdate({
+          ...transaction,
+          linkedDebtId: debtToSave
+        });
+      }
+    } catch (e) {
+      toast.error("Failed to update debt link");
+    }
+  };
+
   if (!isOpen || !transaction) return null;
 
   const getMemberName = (id: string) => {
@@ -198,6 +225,49 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 {isOpeningReceipt ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                 {isOpeningReceipt ? "Securely Opening..." : "View Original Receipt"}
               </button>
+            </div>
+          )}
+
+          {/* Linked Debt Section */}
+          {(!transaction.transactionType || transaction.transactionType === "EXPENSE") && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
+            <div className="mt-6 border-t pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Linked Debt</h3>
+                {!isEditingDebt && (
+                  <button 
+                    onClick={() => setIsEditingDebt(true)}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Edit Link
+                  </button>
+                )}
+              </div>
+              
+              {!isEditingDebt ? (
+                <div className="flex items-center gap-2">
+                  {transaction.linkedDebtId ? (
+                    <Badge variant="outline" className="text-red-500 border-red-500/30 bg-red-500/10">
+                      {activeHousehold?.metadata?.debts?.find((d: any) => d.id === transaction.linkedDebtId)?.name || "Unknown Debt"}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Not linked to any debt</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <select
+                    className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    value={selectedDebtId}
+                    onChange={(e) => setSelectedDebtId(e.target.value)}
+                  >
+                    <option value="">-- None --</option>
+                    {activeHousehold.metadata.debts.map((d: any) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <Button size="sm" onClick={handleSaveDebtLink}>Save</Button>
+                </div>
+              )}
             </div>
           )}
 

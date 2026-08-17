@@ -612,3 +612,32 @@ export async function deleteHouseholdTag(idToken: string, householdId: string, t
   await db.send(command);
   return true;
 }
+
+export async function updateHouseholdDebts(idToken: string, householdId: string, debts: any[]) {
+  const user = await verifyToken(idToken);
+  
+  const existingCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `METADATA`,
+    },
+  });
+  
+  const existing = await db.send(existingCommand);
+  if (!existing.Items || existing.Items.length === 0) throw new Error("Household not found");
+
+  const metadata = existing.Items[0];
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      ...metadata,
+      debts,
+    },
+  });
+
+  await db.send(command);
+  return true;
+}

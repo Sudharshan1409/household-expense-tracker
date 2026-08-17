@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { PutCommand, QueryCommand, DeleteCommand, GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, DeleteCommand, GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { getMonthlySummaryOp } from "@/lib/summary";
 
 export async function createTransaction(
@@ -20,6 +20,7 @@ export async function createTransaction(
     paidBy?: string;
     receiptUrl?: string;
     tags?: string[];
+    linkedDebtId?: string;
   }
 ) {
   const user = await verifyToken(idToken);
@@ -65,6 +66,7 @@ export async function createTransaction(
     transactionType: data.transactionType || "EXPENSE",
     receiptUrl: data.receiptUrl,
     tags: data.tags || [],
+    linkedDebtId: data.linkedDebtId,
     createdAt: now,
   };
 
@@ -383,4 +385,23 @@ export async function getMonthlySummaries(idToken: string, householdId: string) 
   }));
 
   return summariesResponse.Items || [];
+}
+
+export async function updateTransactionDebtLink(idToken: string, householdId: string, sk: string, linkedDebtId?: string) {
+  const user = await verifyToken(idToken);
+  
+  const command = new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: {
+      PK: `HOUSEHOLD#${householdId}`,
+      SK: sk,
+    },
+    UpdateExpression: linkedDebtId ? "SET linkedDebtId = :val" : "REMOVE linkedDebtId",
+    ExpressionAttributeValues: linkedDebtId ? {
+      ":val": linkedDebtId,
+    } : undefined,
+  });
+  
+  await db.send(command);
+  return true;
 }

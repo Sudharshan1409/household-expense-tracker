@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, PieChart, Settings, Wallet, LineChart, MoreHorizontal, Repeat, Users, Hash, ChevronRight } from "lucide-react";
+import { Home, List, PieChart, Settings, Wallet, LineChart, MoreHorizontal, Repeat, Users, Hash, ChevronRight, CreditCard } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
@@ -104,6 +104,22 @@ export function BottomNav() {
                 <span className="text-[11px] text-muted-foreground mt-0.5">Track your milestones</span>
               </div>
               <ChevronRight className="relative z-10 h-5 w-5 text-muted-foreground opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100 group-hover:text-blue-500" />
+            </Link>
+
+            <Link
+              href="/debt"
+              onClick={() => setOpen(false)}
+              className="group relative flex items-center gap-4 rounded-2xl p-4 overflow-hidden border border-border/50 bg-card/50 hover:bg-card hover:shadow-md hover:border-red-500/50 transition-all active:scale-[0.98]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                <CreditCard className="h-6 w-6" />
+              </div>
+              <div className="flex flex-col relative z-10 flex-1">
+                <span className="font-semibold text-foreground">Debt Planner</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5">Pay off loans faster</span>
+              </div>
+              <ChevronRight className="relative z-10 h-5 w-5 text-muted-foreground opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100 group-hover:text-red-500" />
             </Link>
             
             <Link

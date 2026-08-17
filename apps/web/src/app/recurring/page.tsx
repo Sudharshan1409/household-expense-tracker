@@ -192,7 +192,8 @@ export default function RecurringPage() {
           isShared: postModalData.isShared || false,
           splitType: postModalData.isShared ? (postModalData.splitType || "NONE") : "NONE",
           splits: postModalData.isShared ? (postModalData.splits || {}) : (currentUserId ? { [currentUserId]: postModalData.amount } : {}),
-          tags: postModalData.tags || []
+          tags: postModalData.tags || [],
+          linkedDebtId: postModalData.linkedDebtId,
         } : null}
       />
     </div>
