@@ -513,8 +513,8 @@ export default function DebtPlannerPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col md:flex-row gap-8 items-end">
-                  <div className="flex-1 w-full h-[200px]">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-8 md:items-end">
+                  <div className="w-full md:flex-1 h-[200px] md:h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={projection} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
@@ -558,7 +558,7 @@ export default function DebtPlannerPage() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl text-center min-w-[200px]">
+                  <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl text-center min-w-[200px] self-end md:self-auto">
                     <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Debt Free By</p>
                     <p className="text-3xl font-bold text-red-600 dark:text-red-400">{debtFreeDate}</p>
                   </div>
