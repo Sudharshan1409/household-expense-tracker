@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
+import { getCurrentUser, fetchAuthSession, signOut } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 import { useRouter, usePathname } from "next/navigation";
 import { getUserHouseholds } from "@/actions/household";
+import { toast } from "sonner";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -16,8 +18,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true);
       return;
     }
-
     checkAuth();
+
+    const unsubscribe = Hub.listen("auth", ({ payload }) => {
+      if (payload.event === "signedIn" || payload.event === "signInWithRedirect") {
+        checkAuth();
+      }
+    });
+
+    return () => unsubscribe();
   }, [pathname]);
 
   async function checkAuth() {
@@ -28,8 +37,23 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         const session = await fetchAuthSession();
         const idToken = session.tokens?.idToken?.toString();
         if (idToken) {
-          const households = await getUserHouseholds(idToken);
-          if (households.length === 0 && !pathname.startsWith("/onboarding") && !pathname.startsWith("/invite")) {
+          const households: any = await getUserHouseholds(idToken);
+          if (households?.error === "Unauthorized") {
+            console.error("User is unauthorized:", households.details);
+            toast.error(`Unauthorized: ${households.details}`, { duration: 10000 });
+            setIsAuthenticated(false);
+            await signOut().catch(() => {});
+            if (typeof window !== "undefined") {
+              setTimeout(() => router.replace("/auth/login"), 3000);
+            }
+            return;
+          }
+          if (households?.error === "Database error") {
+            // DB is down or credentials expired, stay on page but show error state or just let the app render its own errors
+            setIsAuthenticated(true);
+            return;
+          }
+          if (Array.isArray(households) && households.length === 0 && !pathname.startsWith("/onboarding") && !pathname.startsWith("/invite")) {
             router.replace("/onboarding");
             return;
           }
@@ -39,11 +63,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       }
 
       setIsAuthenticated(true);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name !== "UserUnAuthenticatedException") {
+        console.error("getCurrentUser failed", err);
+      }
       setIsAuthenticated(false);
       // Wait for oauth redirects to clear before aggressive routing
       if (typeof window !== "undefined" && !window.location.search.includes("code=")) {
-        router.replace("/auth/login");
+        if (err?.name !== "UserUnAuthenticatedException") {
+          toast.error(`Session Error: ${err?.message || err?.name || 'Unknown'}`, { duration: 10000 });
+          setTimeout(() => router.replace("/auth/login"), 3000);
+        } else {
+          router.replace("/auth/login");
+        }
       }
     }
   }

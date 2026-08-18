@@ -45,7 +45,12 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       const payload = JSON.parse(atob(payloadBase64));
       setCurrentUserId(payload.sub);
 
-      const memberships = await getUserHouseholds(token);
+      const memberships: any = await getUserHouseholds(token);
+      
+      if (memberships?.error === "Unauthorized") {
+        setHouseholds([]);
+        return;
+      }
       
       const detailedHouseholds = await Promise.all(
         memberships.map(async (m: any) => {

@@ -10,39 +10,51 @@ import crypto from "node:crypto";
  * Check if the user belongs to any household.
  */
 export async function getUserHouseholds(idToken: string) {
-  const user = await verifyToken(idToken);
+  try {
+    const user = await verifyToken(idToken);
 
-  const command = new QueryCommand({
-    TableName: TABLE_NAME,
-    IndexName: "GSI1",
-    KeyConditionExpression: "GSI1PK = :pk",
-    ExpressionAttributeValues: {
-      ":pk": `USER#${user.userId}`,
-    },
-  });
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: "GSI1",
+      KeyConditionExpression: "GSI1PK = :pk",
+      ExpressionAttributeValues: {
+        ":pk": `USER#${user.userId}`,
+      },
+    });
 
-  const response = await db.send(command);
-  return response.Items || [];
+    const response = await db.send(command);
+    return response.Items || [];
+  } catch (err: any) {
+    console.error("getUserHouseholds error:", err);
+    if (err.message?.startsWith("Unauthorized")) {
+      return { error: "Unauthorized", details: err.message } as any;
+    }
+    return { error: "Database error", details: err.message } as any;
+  }
 }
 
 /**
  * Fetch Household metadata by ID.
  */
 export async function getHousehold(idToken: string, householdId: string) {
-  await verifyToken(idToken); // verify caller
+  try {
+    await verifyToken(idToken); // verify caller
 
-  const command = new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: "PK = :pk AND SK = :sk",
-    ExpressionAttributeValues: {
-      ":pk": `HOUSEHOLD#${householdId}`,
-      ":sk": `METADATA`,
-    },
-    ConsistentRead: true,
-  });
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND SK = :sk",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${householdId}`,
+        ":sk": `METADATA`,
+      },
+      ConsistentRead: true,
+    });
 
-  const response = await db.send(command);
-  return response.Items?.[0] || null;
+    const response = await db.send(command);
+    return response.Items?.[0] || null;
+  } catch (err) {
+    return { error: "Unauthorized" } as any;
+  }
 }
 
 /**

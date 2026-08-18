@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { signInWithRedirect, getCurrentUser } from "aws-amplify/auth";
+import { signInWithRedirect, getCurrentUser, signOut } from "aws-amplify/auth";
 import { useRouter } from "next/navigation";
 
 export function LoginForm() {
@@ -24,9 +24,14 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       await signInWithRedirect({ provider: "Google" });
-    } catch (error) {
-      console.error("Error signing in with Google", error);
-      setIsLoading(false);
+    } catch (error: any) {
+      if (error.name === "UserAlreadyAuthenticatedException") {
+        await signOut();
+        await signInWithRedirect({ provider: "Google" });
+      } else {
+        console.error("Error signing in with Google", error);
+        setIsLoading(false);
+      }
     }
   };
 

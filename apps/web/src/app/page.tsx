@@ -16,6 +16,7 @@ import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-animation
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ManageHouseholdModal } from "@/components/household/manage-household-modal";
 import { PacingChart } from "@/components/dashboard/pacing-chart";
+import { DailyAvgModal } from "@/components/dashboard/daily-avg-modal";
 import { Settings as SettingsIcon, UserPlus, Link as LinkIcon } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
 import { format } from "date-fns";
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isDailyAvgModalOpen, setIsDailyAvgModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
 
   // Default to current month in IST
@@ -100,7 +102,7 @@ export default function Dashboard() {
   const isCurrentMonth = selectedMonth === getISTMonthString();
   const currentDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
   const daysLeft = daysInMonth - currentDay + 1;
-  const avgDailySpend = currentDay > 0 ? totalVariableSpend / currentDay : 0;
+  const avgDailySpend = currentDay > 0 ? myVariableSpend / currentDay : 0;
   const dailySpendLimit = (myBudget && budgetRemaining > 0 && isCurrentMonth) ? budgetRemaining / daysLeft : 0;
 
   // Previous Month metrics
@@ -260,9 +262,12 @@ export default function Dashboard() {
 
         {/* Compact 2-Column Row */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+          <div 
+            onClick={() => setIsDailyAvgModalOpen(true)}
+            className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between space-y-2 hover:-translate-y-1 hover:shadow-md transition-all duration-300 cursor-pointer"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Daily Avg</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Your Daily Avg</span>
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
             </div>
             <div>
@@ -422,6 +427,16 @@ export default function Dashboard() {
             onClose={() => setIsManageModalOpen(false)}
             household={activeHousehold}
             onSuccess={() => setIsManageModalOpen(false)}
+          />
+
+          <DailyAvgModal 
+            isOpen={isDailyAvgModalOpen}
+            onClose={() => setIsDailyAvgModalOpen(false)}
+            transactions={transactions}
+            fixedCategories={fixedCategories}
+            currentUserId={currentUserId}
+            selectedMonth={selectedMonth}
+            currentDay={currentDay}
           />
           
           {/* Mobile FABs for Scan and Add Expense */}

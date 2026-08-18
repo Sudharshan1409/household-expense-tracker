@@ -503,65 +503,65 @@ export default function DebtPlannerPage() {
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <TrendingDown className="h-32 w-32" />
               </div>
-              <CardHeader>
-                <CardTitle className="text-red-500 flex items-center gap-2">
-                  <CalendarClock className="h-5 w-5" />
-                  Debt-Free Projection
-                </CardTitle>
-                <CardDescription>
-                  Based on the Avalanche method (paying minimums + prioritizing high interest).
-                </CardDescription>
+              <CardHeader className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-2">
+                <div>
+                  <CardTitle className="text-red-500 flex items-center gap-2">
+                    <CalendarClock className="h-5 w-5" />
+                    Debt-Free Projection
+                  </CardTitle>
+                  <CardDescription className="mt-1.5">
+                    Based on the Avalanche method (paying minimums + prioritizing high interest).
+                  </CardDescription>
+                </div>
+                <div className="inline-flex flex-col items-start md:items-end bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl backdrop-blur-sm">
+                  <span className="text-[11px] uppercase tracking-wider font-bold text-red-600 dark:text-red-400 mb-0.5">Debt Free By</span>
+                  <span className="text-xl md:text-2xl font-black text-red-600 dark:text-red-400 leading-none">{debtFreeDate}</span>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col md:flex-row gap-6 md:gap-8 md:items-end">
-                  <div className="w-full md:flex-1 h-[200px] md:h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={projection} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          {debts.map((debt, index) => {
-                            const colors = ["#ef4444", "#f97316", "#0ea5e9", "#84cc16", "#a855f7", "#eab308"];
-                            const color = colors[index % colors.length];
-                            return (
-                              <linearGradient key={`gradient-${debt.id}`} id={`color-${debt.id}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={color} stopOpacity={0.4}/>
-                                <stop offset="95%" stopColor={color} stopOpacity={0}/>
-                              </linearGradient>
-                            );
-                          })}
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-                        <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${(value/1000)}k`} />
-                        <RechartsTooltip 
-                          contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
-                          formatter={(value: any, name: any) => {
-                            if (name === "balance") return null;
-                            return [`₹${Number(value).toLocaleString('en-IN')}`, name];
-                          }}
-                        />
+                <div className="w-full h-[220px] md:h-[260px] mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={projection} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
                         {debts.map((debt, index) => {
                           const colors = ["#ef4444", "#f97316", "#0ea5e9", "#84cc16", "#a855f7", "#eab308"];
                           const color = colors[index % colors.length];
                           return (
-                            <Area 
-                              key={debt.id}
-                              type="monotone" 
-                              dataKey={debt.name} 
-                              stackId="1"
-                              stroke={color} 
-                              strokeWidth={2} 
-                              fillOpacity={1} 
-                              fill={`url(#color-${debt.id})`} 
-                            />
+                            <linearGradient key={`gradient-${debt.id}`} id={`color-${debt.id}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={color} stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                            </linearGradient>
                           );
                         })}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="bg-red-500/10 border border-red-500/20 p-4 md:p-6 rounded-xl text-center w-full md:w-auto md:min-w-[200px]">
-                    <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Debt Free By</p>
-                    <p className="text-2xl md:text-3xl font-bold text-red-600 dark:text-red-400">{debtFreeDate}</p>
-                  </div>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
+                      <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${(value/1000)}k`} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+                        formatter={(value: any, name: any) => {
+                          if (name === "balance") return null;
+                          return [`₹${Number(value).toLocaleString('en-IN')}`, name];
+                        }}
+                      />
+                      {debts.map((debt, index) => {
+                        const colors = ["#ef4444", "#f97316", "#0ea5e9", "#84cc16", "#a855f7", "#eab308"];
+                        const color = colors[index % colors.length];
+                        return (
+                          <Area 
+                            key={debt.id}
+                            type="monotone" 
+                            dataKey={debt.name} 
+                            stackId="1"
+                            stroke={color} 
+                            strokeWidth={2} 
+                            fillOpacity={1} 
+                            fill={`url(#color-${debt.id})`} 
+                          />
+                        );
+                      })}
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>

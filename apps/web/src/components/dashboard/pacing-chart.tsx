@@ -66,44 +66,45 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
       cumulativeSpend += daySpend;
       prevCumulativeSpend += prevDaySpend;
       
-      let ghostSpend = null;
-      let label = "";
+      let idealSpend = null;
+      let prevSpend = null;
 
+      if (activeBudget) {
+        idealSpend = (activeBudget / daysInMonth) * day;
+      }
       if (hasPrevData) {
-        ghostSpend = prevCumulativeSpend;
-        label = "Vs. Last Month";
-      } else if (activeBudget) {
-        // Ideal pace (divide by total days in month, not currentDay, so it targets the correct month-end goal)
-        ghostSpend = (activeBudget / daysInMonth) * day;
-        label = "Vs. Ideal Pace";
+        prevSpend = prevCumulativeSpend;
       }
       
       data.push({
         day,
         currentSpend: cumulativeSpend,
-        ghostSpend: ghostSpend,
-        label
+        idealSpend,
+        prevSpend
       });
     }
 
     return data;
   }, [transactions, prevTransactions, budget, overallBudget, currentUserId, selectedMonth, viewMode]);
 
-  // Determine if we are currently "losing" the race (current spend > ghost spend)
+  // Determine if we are currently "losing" the race
   const isLosing = useMemo(() => {
-    // Find the last valid day
     let lastValidDay = chartData.filter(d => d.currentSpend !== null).pop();
     if (!lastValidDay) return false;
     
-    if (lastValidDay.ghostSpend !== null && lastValidDay.currentSpend !== null) {
-      return lastValidDay.currentSpend > lastValidDay.ghostSpend;
+    // Primary race is against Ideal Pace, fallback to Prev Month
+    if (lastValidDay.idealSpend !== null && lastValidDay.currentSpend !== null) {
+      return lastValidDay.currentSpend > lastValidDay.idealSpend;
+    } else if (lastValidDay.prevSpend !== null && lastValidDay.currentSpend !== null) {
+      return lastValidDay.currentSpend > lastValidDay.prevSpend;
     }
     return false;
   }, [chartData]);
 
   if (chartData.length === 0) return null;
-  const hasGhost = chartData[0].ghostSpend !== null;
-  const ghostLabel = chartData[0].label;
+  const hasIdeal = chartData[0].idealSpend !== null;
+  const hasPrev = chartData[0].prevSpend !== null;
+  const hasGhost = hasIdeal || hasPrev;
 
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300">
@@ -129,7 +130,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {hasGhost 
-                ? `Racing against your ${ghostLabel.replace("Vs. ", "").toLowerCase()}.` 
+                ? `Racing against your ${hasIdeal && hasPrev ? "ideal pace and last month" : hasIdeal ? "ideal pace" : "last month"}.` 
                 : "Tracking your monthly spend."}
               {fixedCategories.length > 0 && (
                 <span className="block mt-0.5 text-[11px] opacity-70">* Fixed expenses are excluded from pacing</span>
@@ -171,20 +172,32 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
                 }}
                 formatter={(value: any, name: any) => [
                   `₹${value.toFixed(2)}`, 
-                  name === "currentSpend" ? "Current Spend" : ghostLabel
+                  name === "currentSpend" ? "Current Spend" : name === "idealSpend" ? "Ideal Pace" : "Last Month"
                 ]}
                 labelFormatter={(label) => `Day ${label}`}
               />
-              {hasGhost && (
+              {hasIdeal && (
                 <Line 
                   type="monotone" 
-                  dataKey="ghostSpend" 
+                  dataKey="idealSpend" 
                   stroke="var(--muted-foreground)" 
                   strokeWidth={2} 
                   strokeDasharray="4 4"
                   dot={false}
                   activeDot={false}
-                  opacity={0.5}
+                  opacity={0.6}
+                />
+              )}
+              {hasPrev && (
+                <Line 
+                  type="monotone" 
+                  dataKey="prevSpend" 
+                  stroke="var(--primary)" 
+                  strokeWidth={2} 
+                  strokeDasharray="2 4"
+                  dot={false}
+                  activeDot={false}
+                  opacity={0.7}
                 />
               )}
               <Line 
