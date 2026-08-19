@@ -80,7 +80,7 @@ export function DailyAvgModal({ isOpen, onClose, transactions, fixedCategories, 
                   fontSize: "12px",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
                 }}
-                formatter={(value: number) => [`₹${value.toFixed(2)}`, "Spent"]}
+                formatter={(value: any) => [`₹${Number(value || 0).toFixed(2)}`, "Spent"]}
                 labelStyle={{ fontWeight: "bold", color: "var(--foreground)", marginBottom: "4px" }}
               />
               <Line 
