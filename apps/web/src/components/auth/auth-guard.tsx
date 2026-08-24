@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getCurrentUser, fetchAuthSession, signOut } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 import { useRouter, usePathname } from "next/navigation";
@@ -11,6 +11,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const checkAuthInProgress = React.useRef(false);
 
   useEffect(() => {
     // Do not guard authentication routes
@@ -30,6 +31,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   async function checkAuth() {
+    if (checkAuthInProgress.current) return;
+    checkAuthInProgress.current = true;
     try {
       await getCurrentUser();
       
@@ -44,7 +47,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             setIsAuthenticated(false);
             await signOut().catch(() => {});
             if (typeof window !== "undefined") {
-              setTimeout(() => router.replace("/auth/login"), 3000);
+              setTimeout(() => router.replace("/auth/login"), 5000);
             }
             return;
           }
@@ -72,11 +75,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (typeof window !== "undefined" && !window.location.search.includes("code=")) {
         if (err?.name !== "UserUnAuthenticatedException") {
           toast.error(`Session Error: ${err?.message || err?.name || 'Unknown'}`, { duration: 10000 });
-          setTimeout(() => router.replace("/auth/login"), 3000);
+          setTimeout(() => router.replace("/auth/login"), 5000);
         } else {
           router.replace("/auth/login");
         }
       }
+    } finally {
+      checkAuthInProgress.current = false;
     }
   }
 

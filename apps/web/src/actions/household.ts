@@ -2,7 +2,7 @@
 
 import { db, TABLE_NAME } from "@/lib/db";
 import { verifyToken } from "@/lib/auth-server";
-import { QueryCommand, PutCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, PutCommand, DeleteCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import crypto from "node:crypto";
 
@@ -51,7 +51,44 @@ export async function getHousehold(idToken: string, householdId: string) {
     });
 
     const response = await db.send(command);
-    return response.Items?.[0] || null;
+    const metadata = response.Items?.[0] || null;
+
+    if (!metadata) return null;
+
+    // Derive total budget from all members
+    const membersCommand = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${householdId}`,
+        ":skPrefix": `MEMBER#`,
+      },
+    });
+    const membersResponse = await db.send(membersCommand);
+    const members = membersResponse.Items || [];
+    
+    const totalBudget = members.reduce((sum, member) => sum + (member.budget || 0), 0);
+    
+    const overallIncreases: Record<string, number> = {};
+    const allIncreaseMonths = new Set<string>();
+    members.forEach(m => {
+      if (m.budgetIncreases) {
+        Object.keys(m.budgetIncreases).forEach(month => allIncreaseMonths.add(month));
+      }
+    });
+
+    allIncreaseMonths.forEach(month => {
+      let sum = 0;
+      members.forEach(m => {
+        sum += (m.budgetIncreases?.[month] ?? 0);
+      });
+      overallIncreases[month] = sum;
+    });
+
+    metadata.monthlyBudget = totalBudget;
+    metadata.overallBudgetIncreases = overallIncreases;
+    
+    return metadata;
   } catch (err) {
     return { error: "Unauthorized" } as any;
   }
@@ -290,30 +327,25 @@ async function verifyOwnerOrAdmin(userId: string, householdId: string) {
 /**
  * Update household settings (Name, Budget). Owner or Admin only.
  */
-export async function updateHouseholdSettings(idToken: string, householdId: string, settings: { name: string; monthlyBudget: number }) {
+export async function updateHouseholdSettings(idToken: string, householdId: string, settings: { name: string }) {
   const user = await verifyToken(idToken);
   await verifyOwnerOrAdmin(user.userId, householdId);
   
-  const existingCommand = new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: "PK = :pk AND SK = :sk",
-    ExpressionAttributeValues: {
-      ":pk": `HOUSEHOLD#${householdId}`,
-      ":sk": `METADATA`,
-    },
-  });
-  const existing = await db.send(existingCommand);
-  const metadata = existing.Items?.[0] || {};
-  
-  const command = new PutCommand({
-    TableName: TABLE_NAME,
-    Item: {
-      ...metadata,
-      name: settings.name,
-      monthlyBudget: settings.monthlyBudget,
-      updatedAt: new Date().toISOString(),
-    },
-  });
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `HOUSEHOLD#${householdId}`,
+        SK: `METADATA`,
+      },
+      UpdateExpression: "SET #n = :name, updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#n": "name",
+      },
+      ExpressionAttributeValues: {
+        ":name": settings.name,
+        ":updatedAt": new Date().toISOString(),
+      },
+    });
 
   await db.send(command);
   return true;
@@ -444,16 +476,74 @@ export async function updateMemberBudget(idToken: string, householdId: string, b
   if (!existing.Items || existing.Items.length === 0) throw new Error("Not a member");
 
   const memberData = existing.Items[0];
+  memberData.budget = budget;
   
   const command = new PutCommand({
     TableName: TABLE_NAME,
-    Item: {
-      ...memberData,
-      budget,
-    },
+    Item: memberData,
   });
 
   await db.send(command);
+  return true;
+}
+
+/**
+ * Set a temporary budget increase for a specific month.
+ */
+export async function updateMemberBudgetIncrease(idToken: string, householdId: string, increase: number, month: string) {
+  const user = await verifyToken(idToken);
+  
+  const getCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `MEMBER#${user.userId}`,
+    },
+  });
+  const existing = await db.send(getCommand);
+  if (!existing.Items || existing.Items.length === 0) throw new Error("Not a member");
+
+  const memberData = existing.Items[0];
+  memberData.budgetIncreases = memberData.budgetIncreases || {};
+  memberData.budgetIncreases[month] = increase;
+  
+  const command = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: memberData,
+  });
+
+  await db.send(command);
+  return true;
+}
+
+/**
+ * Clear a temporary budget increase for a specific month.
+ */
+export async function clearMemberBudgetIncrease(idToken: string, householdId: string, month: string) {
+  const user = await verifyToken(idToken);
+  
+  const getCommand = new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "PK = :pk AND SK = :sk",
+    ExpressionAttributeValues: {
+      ":pk": `HOUSEHOLD#${householdId}`,
+      ":sk": `MEMBER#${user.userId}`,
+    },
+  });
+  const existing = await db.send(getCommand);
+  if (!existing.Items || existing.Items.length === 0) throw new Error("Not a member");
+
+  const memberData = existing.Items[0];
+  
+  if (memberData.budgetIncreases && memberData.budgetIncreases[month]) {
+    delete memberData.budgetIncreases[month];
+    const command = new PutCommand({
+      TableName: TABLE_NAME,
+      Item: memberData,
+    });
+    await db.send(command);
+  }
   return true;
 }
 

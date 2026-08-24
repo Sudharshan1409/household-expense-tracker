@@ -74,7 +74,13 @@ export default function Dashboard() {
   }
 
   // Calculate metrics
-  const myBudget = activeHousehold?.monthlyBudget;
+  const myBudgetBase = activeHousehold?.monthlyBudget ?? 0;
+  const myBudgetIncrease = activeHousehold?.budgetIncreases?.[selectedMonth] ?? 0;
+  const myBudget = myBudgetBase + myBudgetIncrease;
+  
+  const overallBudgetBase = activeHousehold?.overallBudget ?? 0;
+  const overallBudgetIncrease = activeHousehold?.overallBudgetIncreases?.[selectedMonth] ?? 0;
+  const overallBudget = overallBudgetBase + overallBudgetIncrease;
   const expenseTxs = transactions.filter(tx => tx.transactionType !== "INCOME");
   const incomeTxs = transactions.filter(tx => tx.transactionType === "INCOME");
   
@@ -313,7 +319,7 @@ export default function Dashboard() {
           transactions={transactions} 
           prevTransactions={prevTransactions} 
           budget={myBudget} 
-          overallBudget={activeHousehold?.overallBudget}
+          overallBudget={overallBudget}
           currentUserId={currentUserId}
           selectedMonth={selectedMonth}
           fixedCategories={activeHousehold?.fixedCategories || []}

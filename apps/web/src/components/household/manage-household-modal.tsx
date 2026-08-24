@@ -10,6 +10,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { TelegramSettings } from "@/components/settings/telegram-settings";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,8 +73,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (token) {
-        // We leave the household-level budget alone for backward compatibility
-        await updateHouseholdSettings(token, household.householdId, { name, monthlyBudget: budget });
+        await updateHouseholdSettings(token, household.householdId, { name });
         onSuccess();
         toast("Household renamed successfully.");
       }
@@ -347,20 +347,20 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                       
                       {isOwner && m.role !== "OWNER" && (
                         <div className="flex items-center gap-2">
-                          <select
-                            className="text-xs border rounded-md px-2 py-1 bg-background"
+                          <Select
                             value={m.role}
-                            onChange={(e) => {
-                              // Revert select temporarily until confirmed
-                              const selectEl = e.target;
-                              const newRole = selectEl.value as "ADMIN" | "MEMBER";
-                              selectEl.value = m.role;
-                              setPendingRoleChange({ userId: m.userId, newRole, userName: m.userName || m.userId });
+                            onValueChange={(newRole) => {
+                              setPendingRoleChange({ userId: m.userId, newRole: newRole as "ADMIN" | "MEMBER", userName: m.userName || m.userId });
                             }}
                           >
-                            <option value="MEMBER">Member</option>
-                            <option value="ADMIN">Admin</option>
-                          </select>
+                            <SelectTrigger className="h-8 text-xs bg-background">
+                              <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MEMBER">Member</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setPendingRemove({ userId: m.userId, userName: m.userName || m.userId })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

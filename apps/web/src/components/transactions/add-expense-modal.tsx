@@ -12,6 +12,7 @@ import { useHousehold } from "@/components/providers/household-provider";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import confetti from "canvas-confetti";
 
 export interface ScannedReceiptData {
@@ -330,7 +331,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
         paidBy,
         receiptUrl: finalReceiptUrl,
         tags,
-        linkedDebtId: linkedDebtId || undefined,
+        linkedDebtId: (transactionType === "EXPENSE" && category.toLowerCase() === "loan" && linkedDebtId) ? linkedDebtId : undefined,
       });
 
       confetti({
@@ -508,36 +509,40 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
                 {transactionType === "EXPENSE" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Category</label>
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      disabled={isLoading}
-                    >
-                      {activeHousehold?.categories?.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      )) || (
-                        <option value="Other">Other</option>
-                      )}
-                    </select>
+                    <Select value={category} onValueChange={setCategory} disabled={isLoading}>
+                      <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeHousehold?.categories?.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        )) || (
+                          <SelectItem value="Other">Other</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>
               
-              {transactionType === "EXPENSE" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
+              {transactionType === "EXPENSE" && category.toLowerCase() === "loan" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
                 <div className="space-y-2 mt-2">
                   <label className="text-sm font-medium">Link to Debt (Optional)</label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    value={linkedDebtId}
-                    onChange={(e) => setLinkedDebtId(e.target.value)}
-                    disabled={isLoading}
-                  >
-                    <option value="">-- None --</option>
-                    {activeHousehold.metadata.debts.map((d: any) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <Select value={linkedDebtId || "none"} onValueChange={(val) => setLinkedDebtId(val === "none" ? "" : val)} disabled={isLoading}>
+                    <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      <SelectValue placeholder="-- None --">
+                        {linkedDebtId && linkedDebtId !== "none" 
+                          ? activeHousehold.metadata.debts.find((d: any) => d.id === linkedDebtId)?.name 
+                          : "-- None --"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- None --</SelectItem>
+                      {activeHousehold.metadata.debts.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>

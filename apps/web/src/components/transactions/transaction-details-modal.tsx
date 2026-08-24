@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -255,16 +256,21 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <select
-                    className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    value={selectedDebtId}
-                    onChange={(e) => setSelectedDebtId(e.target.value)}
-                  >
-                    <option value="">-- None --</option>
-                    {activeHousehold.metadata.debts.map((d: any) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <Select value={selectedDebtId || "none"} onValueChange={(val) => setSelectedDebtId(val === "none" ? "" : val)}>
+                    <SelectTrigger className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      <SelectValue placeholder="-- None --">
+                        {selectedDebtId && selectedDebtId !== "none"
+                          ? activeHousehold.metadata.debts.find((d: any) => d.id === selectedDebtId)?.name
+                          : "-- None --"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- None --</SelectItem>
+                      {activeHousehold.metadata.debts.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button size="sm" onClick={handleSaveDebtLink}>Save</Button>
                 </div>
               )}

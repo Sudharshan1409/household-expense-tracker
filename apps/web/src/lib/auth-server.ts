@@ -1,13 +1,15 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
-let verifier: any = null;
+const globalForAuth = globalThis as unknown as {
+  verifier: any;
+};
 
 export async function verifyToken(token: string) {
-  if (!verifier) {
+  if (!globalForAuth.verifier) {
     if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID) {
       console.warn("WARNING: NEXT_PUBLIC_COGNITO_USER_POOL_ID is undefined. Please restart your Next.js dev server!");
     }
-    verifier = CognitoJwtVerifier.create({
+    globalForAuth.verifier = CognitoJwtVerifier.create({
       userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || "ap-south-1_MIfl6nhaK",
       tokenUse: "id",
       clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "300n0vkp6c1j0btr95rgub32rr",
@@ -15,7 +17,7 @@ export async function verifyToken(token: string) {
   }
 
   try {
-    const payload = await verifier.verify(token);
+    const payload = await globalForAuth.verifier.verify(token);
     return {
       userId: payload.sub,
       email: payload.email?.toString(),

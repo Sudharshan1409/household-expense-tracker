@@ -9,7 +9,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Wallet, Target, AlertTriangle, Info, Edit2, X } from "lucide-react";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions } from "@/actions/transaction";
-import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget } from "@/actions/household";
+import { getHouseholdMembers, updateCategoryBudgets, updateHouseholdSettings, updateMemberBudget, clearMemberBudgetIncrease, updateMemberBudgetIncrease } from "@/actions/household";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,10 +19,6 @@ import { fetchAuthSession } from "aws-amplify/auth";
 
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
-  
-  // Overall Budget State
-  const [isEditingOverall, setIsEditingOverall] = useState(false);
-  const [overallBudget, setOverallBudget] = useState("50000");
   
   // Category Budget State
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>({});
@@ -34,6 +30,8 @@ export default function BudgetsPage() {
   // My Budget State
   const [isEditingMyBudget, setIsEditingMyBudget] = useState(false);
   const [myBudgetInput, setMyBudgetInput] = useState("");
+  const [isEditingIncrease, setIsEditingIncrease] = useState(false);
+  const [increaseInput, setIncreaseInput] = useState("");
   const [activeTab, setActiveTab] = useState<"variable" | "fixed">("variable");
 
   useEffect(() => {
@@ -64,11 +62,6 @@ export default function BudgetsPage() {
   const isLoading = isTxLoading || isMemsLoading;
 
   useEffect(() => {
-    // Set overall budget from context
-    setOverallBudget(activeHousehold?.overallBudget?.toString() || "50000");
-  }, [activeHousehold?.overallBudget]);
-
-  useEffect(() => {
     // Sync individual category budgets
     if (mems && currentUserId) {
       const me = mems.find((m: any) => m.userId === currentUserId);
@@ -93,7 +86,7 @@ export default function BudgetsPage() {
 
       await updateMemberBudget(token, activeHousehold.householdId, numBudget);
       
-      toast.success("My budget updated");
+      toast.success("Base budget updated");
       setIsEditingMyBudget(false);
       refreshHouseholds();
     } catch (err) {
@@ -104,29 +97,47 @@ export default function BudgetsPage() {
     }
   };
 
-
-  const handleSaveOverallBudget = async () => {
-    if (!activeHousehold?.householdId) return;
+  const handleSaveIncrease = async () => {
+    if (!activeHousehold?.householdId || !currentUserId) return;
     setIsSaving(true);
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       if (!token) throw new Error("No token");
 
-      const numBudget = parseFloat(overallBudget);
-      if (isNaN(numBudget) || numBudget < 0) throw new Error("Invalid budget");
+      const numIncrease = parseFloat(increaseInput);
+      if (isNaN(numIncrease) || numIncrease <= 0) throw new Error("Invalid increase");
 
-      await updateHouseholdSettings(token, activeHousehold.householdId, { 
-        name: activeHousehold.name, 
-        monthlyBudget: numBudget 
-      });
+      await updateMemberBudgetIncrease(token, activeHousehold.householdId, numIncrease, selectedMonth);
       
-      toast.success("Household budget updated");
-      setIsEditingOverall(false);
+      toast.success(`Temporary budget increased by ₹${numIncrease} for ${selectedMonth}`);
+      setIsEditingIncrease(false);
+      setIncreaseInput("");
       refreshHouseholds();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to update household budget");
+      toast.error("Failed to increase budget");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClearOverride = async () => {
+    if (!activeHousehold?.householdId) return;
+    if (!confirm(`Are you sure you want to clear the temporary budget increase for ${selectedMonth}?`)) return;
+    
+    setIsSaving(true);
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      if (!token) throw new Error("No token");
+
+      await clearMemberBudgetIncrease(token, activeHousehold.householdId, selectedMonth);
+      toast.success(`Cleared temporary budget increase for ${selectedMonth}`);
+      refreshHouseholds();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to clear temporary budget increase");
     } finally {
       setIsSaving(false);
     }
@@ -193,10 +204,14 @@ export default function BudgetsPage() {
     return acc + myShare;
   }, 0);
 
-  const overallBudgetNum = parseFloat(overallBudget) || 0;
+  const overallBudgetBase = activeHousehold?.overallBudget ?? 0;
+  const overallBudgetIncrease = activeHousehold?.overallBudgetIncreases?.[selectedMonth] ?? 0;
+  const overallBudgetNum = overallBudgetBase + overallBudgetIncrease;
   const overallProgress = overallBudgetNum > 0 ? (totalHouseholdSpend / overallBudgetNum) * 100 : 0;
   
-  const myBudgetNum = activeHousehold?.monthlyBudget || 0;
+  const myBudgetBase = activeHousehold?.monthlyBudget ?? 0;
+  const myBudgetIncrease = activeHousehold?.budgetIncreases?.[selectedMonth] ?? 0;
+  const myBudgetNum = myBudgetBase + myBudgetIncrease;
   const myProgress = myBudgetNum > 0 ? (totalMySpend / myBudgetNum) * 100 : 0;
 
   // Date and Daily calculations
@@ -260,29 +275,26 @@ export default function BudgetsPage() {
                 </Tooltip>
               </div>
               
-              {isEditingOverall ? (
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="relative w-48">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
-                    <input
-                      type="number"
-                      value={overallBudget}
-                      onChange={(e) => setOverallBudget(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    />
-                  </div>
-                  <Button size="sm" onClick={handleSaveOverallBudget} disabled={isSaving}>Save</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingOverall(false)}>Cancel</Button>
+              <div className="flex items-baseline gap-2 pt-1">
+                <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
+                <span className="text-sm md:text-base text-muted-foreground font-medium">total monthly limit</span>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-md border">
+                  <span>Base: ₹{overallBudgetBase.toLocaleString()} (derived)</span>
                 </div>
-              ) : (
-                <div className="flex items-baseline gap-2 pt-1">
-                  <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{overallBudgetNum.toLocaleString()}</span>
-                  <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
-                  <Button variant="ghost" size="icon" onClick={() => setIsEditingOverall(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+                
+                {overallBudgetIncrease > 0 && (
+                  <>
+                    <span className="text-muted-foreground/50">+</span>
+                    
+                    <div className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md border border-indigo-500/20">
+                      <span>Temporary Increase: ₹{overallBudgetIncrease.toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             
             <div className="space-y-3 pt-4 border-t">
@@ -339,26 +351,68 @@ export default function BudgetsPage() {
               </div>
               
               {isEditingMyBudget ? (
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="relative w-48">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
-                    <input
-                      type="number"
-                      value={myBudgetInput}
-                      onChange={(e) => setMyBudgetInput(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    />
+                <div className="flex flex-col gap-3 pt-2">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-48">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                      <input
+                        type="number"
+                        value={myBudgetInput}
+                        onChange={(e) => setMyBudgetInput(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      />
+                    </div>
+                    <Button size="sm" onClick={handleSaveMyBudget} disabled={isSaving}>Save Base</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditingMyBudget(false)}>Cancel</Button>
                   </div>
-                  <Button size="sm" onClick={handleSaveMyBudget} disabled={isSaving}>Save</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingMyBudget(false)}>Cancel</Button>
                 </div>
               ) : (
-                <div className="flex items-baseline gap-2 pt-1">
-                  <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{myBudgetNum.toLocaleString()}</span>
-                  <span className="text-sm md:text-base text-muted-foreground font-medium">monthly limit</span>
-                  <Button variant="ghost" size="icon" onClick={() => setIsEditingMyBudget(true)} className="ml-1 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10">
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
+                <div className="flex flex-col pt-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl md:text-4xl font-bold tracking-tight">₹{myBudgetNum.toLocaleString()}</span>
+                    <span className="text-sm md:text-base text-muted-foreground font-medium">total monthly limit</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-md border">
+                      <span>Base: ₹{myBudgetBase.toLocaleString()}</span>
+                      <Button variant="ghost" size="icon" onClick={() => setIsEditingMyBudget(true)} className="h-6 w-6 ml-1 hover:bg-background">
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    
+                    <span className="text-muted-foreground/50">+</span>
+                    
+                    <div className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md border border-indigo-500/20">
+                      <span>Temporary Increase: ₹{myBudgetIncrease.toLocaleString()}</span>
+                      {myBudgetIncrease > 0 ? (
+                        <Button variant="ghost" size="icon" onClick={handleClearOverride} disabled={isSaving} className="h-6 w-6 ml-1 text-destructive hover:bg-background">
+                          <X className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => setIsEditingIncrease(true)} className="h-6 text-xs px-2 ml-1 hover:bg-background">
+                          Increase
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isEditingIncrease && (
+                    <div className="flex items-center gap-3 mt-4 p-3 bg-muted/30 rounded-lg border">
+                      <div className="relative w-40">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          value={increaseInput}
+                          onChange={(e) => setIncreaseInput(e.target.value)}
+                          className="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        />
+                      </div>
+                      <Button size="sm" className="h-9 bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveIncrease} disabled={isSaving}>Add</Button>
+                      <Button variant="ghost" size="sm" className="h-9" onClick={() => setIsEditingIncrease(false)}>Cancel</Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

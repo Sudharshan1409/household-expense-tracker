@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useHousehold } from "@/components/providers/household-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TemplateModalProps {
   isOpen: boolean;
@@ -130,10 +131,10 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
         splitType: (transactionType === "EXPENSE" && isShared) ? splitType : "NONE",
         splits: (transactionType === "EXPENSE" && isShared) ? splits : {},
         tags,
-        linkedDebtId: (transactionType === "EXPENSE" && linkedDebtId) ? linkedDebtId : undefined,
+        linkedDebtId: (transactionType === "EXPENSE" && category.toLowerCase() === "loan" && linkedDebtId) ? linkedDebtId : undefined,
       };
 
-      const existingHouseholdTags = activeHousehold?.metadata?.debts || [];
+      const existingHouseholdTags = activeHousehold?.metadata?.tags || [];
       const tagsToAddToHousehold = tags.filter(t => !existingHouseholdTags.includes(t));
       
       for (const tag of tagsToAddToHousehold) {
@@ -219,34 +220,40 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              {transactionType === "EXPENSE" ? (
-                activeHousehold?.categories?.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))
-              ) : (
-                <option value="Income">Income</option>
-              )}
-            </select>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {transactionType === "EXPENSE" ? (
+                  activeHousehold?.categories?.map((c: string) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="Income">Income</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
-          {transactionType === "EXPENSE" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
+          {transactionType === "EXPENSE" && category.toLowerCase() === "loan" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Link to Debt (Optional)</label>
-              <select
-                value={linkedDebtId}
-                onChange={(e) => setLinkedDebtId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
-                <option value="">None</option>
-                {activeHousehold.metadata.debts.map((d: any) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              <Select value={linkedDebtId || "none"} onValueChange={(val) => setLinkedDebtId(val === "none" ? "" : val)}>
+                <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                  <SelectValue placeholder="None">
+                    {linkedDebtId && linkedDebtId !== "none" 
+                      ? activeHousehold.metadata.debts.find((d: any) => d.id === linkedDebtId)?.name 
+                      : "None"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {activeHousehold.metadata.debts.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
