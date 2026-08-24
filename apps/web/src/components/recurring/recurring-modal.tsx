@@ -220,7 +220,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Category</label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={category} onValueChange={(val) => setCategory(val || "")}>
               <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -239,7 +239,7 @@ export function TemplateModal({ isOpen, onClose, householdId, onSuccess, existin
           {transactionType === "EXPENSE" && category.toLowerCase() === "loan" && activeHousehold?.metadata?.debts && activeHousehold.metadata.debts.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Link to Debt (Optional)</label>
-              <Select value={linkedDebtId || "none"} onValueChange={(val) => setLinkedDebtId(val === "none" ? "" : val)}>
+              <Select value={linkedDebtId || "none"} onValueChange={(val) => setLinkedDebtId(val === "none" ? "" : (val || ""))}>
                 <SelectTrigger className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                   <SelectValue placeholder="None">
                     {linkedDebtId && linkedDebtId !== "none" 

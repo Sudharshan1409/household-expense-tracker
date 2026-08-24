@@ -256,7 +256,7 @@ export function TransactionDetailsModal({ isOpen, onClose, transaction, househol
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Select value={selectedDebtId || "none"} onValueChange={(val) => setSelectedDebtId(val === "none" ? "" : val)}>
+                  <Select value={selectedDebtId || "none"} onValueChange={(val) => setSelectedDebtId(val === "none" ? "" : (val || ""))}>
                     <SelectTrigger className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                       <SelectValue placeholder="-- None --">
                         {selectedDebtId && selectedDebtId !== "none"
