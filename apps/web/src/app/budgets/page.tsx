@@ -16,6 +16,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { format } from "date-fns";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { fetchAuthSession } from "aws-amplify/auth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BudgetsPage() {
   const { activeHousehold, isLoading: isHouseholdLoading, currentUserId, refreshHouseholds } = useHousehold();
@@ -32,6 +42,7 @@ export default function BudgetsPage() {
   const [myBudgetInput, setMyBudgetInput] = useState("");
   const [isEditingIncrease, setIsEditingIncrease] = useState(false);
   const [increaseInput, setIncreaseInput] = useState("");
+  const [isClearIncreaseDialogOpen, setIsClearIncreaseDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"variable" | "fixed">("variable");
 
   useEffect(() => {
@@ -124,7 +135,6 @@ export default function BudgetsPage() {
 
   const handleClearOverride = async () => {
     if (!activeHousehold?.householdId) return;
-    if (!confirm(`Are you sure you want to clear the temporary budget increase for ${selectedMonth}?`)) return;
     
     setIsSaving(true);
     try {
@@ -140,6 +150,7 @@ export default function BudgetsPage() {
       toast.error("Failed to clear temporary budget increase");
     } finally {
       setIsSaving(false);
+      setIsClearIncreaseDialogOpen(false);
     }
   };
 
@@ -288,9 +299,24 @@ export default function BudgetsPage() {
                 {overallBudgetIncrease > 0 && (
                   <>
                     <span className="text-muted-foreground/50">+</span>
-                    
-                    <div className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md border border-indigo-500/20">
-                      <span>Temporary Increase: ₹{overallBudgetIncrease.toLocaleString()}</span>
+                    <div className="flex flex-col gap-1.5 w-full mt-1">
+                      <div className="flex items-center gap-1 w-fit bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-md border border-indigo-500/20">
+                        <span className="font-medium">Temp Increase: ₹{overallBudgetIncrease.toLocaleString()}</span>
+                      </div>
+                      
+                      {mems.filter((m: any) => (m.budgetIncreases?.[selectedMonth] || 0) > 0).length > 0 && (
+                        <div className="flex flex-col gap-1 mt-1 pl-1">
+                          {mems
+                            .filter((m: any) => (m.budgetIncreases?.[selectedMonth] || 0) > 0)
+                            .map((m: any) => (
+                              <div key={m.userId} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="w-1 h-1 rounded-full bg-indigo-500/50"></div>
+                                <span className="font-medium">{m.userName?.split(' ')[0] || m.userId}</span>
+                                <span>+₹{(m.budgetIncreases?.[selectedMonth] || 0).toLocaleString()}</span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -386,11 +412,16 @@ export default function BudgetsPage() {
                     <div className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md border border-indigo-500/20">
                       <span>Temporary Increase: ₹{myBudgetIncrease.toLocaleString()}</span>
                       {myBudgetIncrease > 0 ? (
-                        <Button variant="ghost" size="icon" onClick={handleClearOverride} disabled={isSaving} className="h-6 w-6 ml-1 text-destructive hover:bg-background">
-                          <X className="h-3 w-3" />
-                        </Button>
+                        <div className="flex items-center">
+                          <Button variant="ghost" size="icon" onClick={() => { setIncreaseInput(myBudgetIncrease.toString()); setIsEditingIncrease(true); }} disabled={isSaving} className="h-6 w-6 ml-1 hover:bg-background text-indigo-700 dark:text-indigo-300">
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setIsClearIncreaseDialogOpen(true)} disabled={isSaving} className="h-6 w-6 text-destructive hover:bg-background">
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       ) : (
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditingIncrease(true)} className="h-6 text-xs px-2 ml-1 hover:bg-background">
+                        <Button variant="ghost" size="sm" onClick={() => { setIncreaseInput(""); setIsEditingIncrease(true); }} className="h-6 text-xs px-2 ml-1 hover:bg-background">
                           Increase
                         </Button>
                       )}
@@ -409,7 +440,9 @@ export default function BudgetsPage() {
                           className="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         />
                       </div>
-                      <Button size="sm" className="h-9 bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveIncrease} disabled={isSaving}>Add</Button>
+                      <Button size="sm" className="h-9 bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveIncrease} disabled={isSaving}>
+                        {myBudgetIncrease > 0 ? "Save" : "Add"}
+                      </Button>
                       <Button variant="ghost" size="sm" className="h-9" onClick={() => setIsEditingIncrease(false)}>Cancel</Button>
                     </div>
                   )}
@@ -654,6 +687,23 @@ export default function BudgetsPage() {
           }}
         />
       )}
+
+      <AlertDialog open={isClearIncreaseDialogOpen} onOpenChange={setIsClearIncreaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Temporary Increase</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear the temporary budget increase for {selectedMonth}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearOverride} disabled={isSaving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isSaving ? "Clearing..." : "Clear"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
