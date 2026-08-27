@@ -14,11 +14,12 @@ import { getHouseholdMembers } from "@/actions/household";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee, Tag, Scale } from "lucide-react";
+import { PieChart as PieChartIcon, Download, Calendar, TrendingUp, Users, FileSpreadsheet, FileText, ArrowUpRight, ArrowDownRight, IndianRupee, Tag, Scale, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, subMonths } from "date-fns";
+import Link from "next/link";
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -281,7 +282,14 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 flex-wrap">
+      <div className="flex justify-end gap-3 flex-wrap items-center">
+        <Link href="/reports/wrapped">
+          <Button variant="default" className="h-10 bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white shadow-md border-0 gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Year in Review</span>
+            <span className="sm:hidden">Wrapped</span>
+          </Button>
+        </Link>
         <div className="flex rounded-md shadow-sm" role="group">
           <Button 
             variant="outline" 

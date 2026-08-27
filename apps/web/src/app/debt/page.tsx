@@ -64,6 +64,9 @@ export default function DebtPlannerPage() {
   // Delete Confirmation
   const [debtToDelete, setDebtToDelete] = useState<any>(null);
 
+  // Projection Simulation
+  const [extraAvalancheBudget, setExtraAvalancheBudget] = useState<number>(0);
+
   useEffect(() => {
     if (activeHousehold) {
       setDebts(activeHousehold.metadata?.debts || []);
@@ -269,9 +272,8 @@ export default function DebtPlannerPage() {
     if (simulationDebts.length === 0) return [];
 
     const totalMinimums = simulationDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-    // Use exactly the minimums for baseline projection. 
-    // In the future, we can add an "Extra Avalanche Budget" input.
-    const monthlyBudget = totalMinimums; 
+    // Add any extra simulated budget to the minimums
+    const monthlyBudget = totalMinimums + (Number(extraAvalancheBudget) || 0); 
     
     let currentDate = new Date();
     currentDate.setDate(1); // start of month
@@ -512,6 +514,22 @@ export default function DebtPlannerPage() {
                   <CardDescription className="mt-1.5">
                     Based on the Avalanche method (paying minimums + prioritizing high interest).
                   </CardDescription>
+                  <div className="mt-5 flex flex-col gap-2 min-w-[250px]">
+                    <div className="flex justify-between text-sm">
+                      <label className="font-medium text-foreground">Extra Monthly Payment:</label>
+                      <span className="font-bold text-red-600 dark:text-red-400">+₹{extraAvalancheBudget.toLocaleString()}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100000" 
+                      step="500"
+                      value={extraAvalancheBudget} 
+                      onChange={(e) => setExtraAvalancheBudget(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-red-500/20 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <span className="text-xs text-muted-foreground">Slide to see how much faster you can become debt-free.</span>
+                  </div>
                 </div>
                 <div className="inline-flex flex-col items-start md:items-end bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl backdrop-blur-sm">
                   <span className="text-[11px] uppercase tracking-wider font-bold text-red-600 dark:text-red-400 mb-0.5">Debt Free By</span>

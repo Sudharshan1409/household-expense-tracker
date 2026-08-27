@@ -43,7 +43,7 @@ Checkboxes are the implementation source of progress.
 - [x] Basic multi-member split (Equal)
 - [x] Custom multi-member split (Percentage, Exact)
 - [x] Transaction edit/delete APIs
-- [x] Receipt attachment upload
+- [x] Receipt attachment upload & AI Scanner (Already done)
 - [x] Custom categories
 - [ ] Payment methods
 - [x] Filters/search/pagination
@@ -73,6 +73,7 @@ Checkboxes are the implementation source of progress.
 - [x] Category budgets
 - [x] Budget vs actual
 - [x] Green/amber/red thresholds
+- [x] Shared Savings Goals (Already done)
 - [x] Income entries
 - [x] Savings calculation
 - [x] Net cash flow
@@ -91,8 +92,9 @@ Checkboxes are the implementation source of progress.
 - [x] Smart Templates model
 - [x] Recurring transaction management
 
-## Phase 8 — Settlements (Skipped)
+## Phase 8 — Settlements (Skipped / NOT REQUIRED)
 - [x] Handled by external apps (GPay)
+- [x] Splitwise-style features are explicitly NOT REQUIRED. DO NOT EVER RECOMMEND this feature again.
 
 
 
