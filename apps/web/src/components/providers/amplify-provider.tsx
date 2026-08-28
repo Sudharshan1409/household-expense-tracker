@@ -2,6 +2,17 @@
 
 import { Amplify } from "aws-amplify";
 import 'aws-amplify/auth/enable-oauth-listener';
+import { App as CapacitorApp } from '@capacitor/app';
+
+if (typeof window !== 'undefined') {
+  CapacitorApp.addListener('appUrlOpen', (event) => {
+    // If we receive an OAuth callback (code= or error=)
+    if (event.url.includes('code=') || event.url.includes('error=')) {
+      // Force the webview to navigate to the url so Amplify can parse it
+      window.location.href = event.url;
+    }
+  });
+}
 
 const redirectUrl =
   typeof window !== "undefined"

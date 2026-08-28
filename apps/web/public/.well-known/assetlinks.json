@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.household.tracker",
+    "sha256_cert_fingerprints": ["71:75:D1:85:D2:56:8F:DB:19:8E:3B:E6:BC:69:5D:E5:E0:65:72:13:1C:A5:D0:F2:B7:D2:B3:58:D9:8C:ED:A4"]
+  }
+}]

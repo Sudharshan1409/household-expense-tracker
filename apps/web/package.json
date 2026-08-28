@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev -H 0.0.0.0 --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
@@ -15,6 +15,10 @@
     "@aws-sdk/lib-dynamodb": "^3.1091.0",
     "@aws-sdk/s3-request-presigner": "^3.1092.0",
     "@base-ui/react": "^1.6.0",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@t3-oss/env-nextjs": "^0.13.11",
     "aws-amplify": "^6.18.0",

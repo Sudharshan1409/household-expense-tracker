@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Household Tracker</string>
+    <string name="title_activity_main">Household Tracker</string>
+    <string name="package_name">com.household.tracker</string>
+    <string name="custom_url_scheme">com.household.tracker</string>
+</resources>
