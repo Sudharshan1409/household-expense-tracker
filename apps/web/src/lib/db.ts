@@ -6,4 +6,4 @@ const client = new DynamoDBClient({
 });
 
 export const db = DynamoDBDocumentClient.from(client);
-export const TABLE_NAME = "HouseholdFinance";
+export const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "HouseholdFinance";

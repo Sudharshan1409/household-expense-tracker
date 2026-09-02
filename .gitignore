@@ -12,3 +12,5 @@ yarn-error.log*
 aitools/
 client.json
 update.json
+dev.env
+prod.env

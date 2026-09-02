@@ -9,17 +9,24 @@ import * as path from 'path';
 // Load environment variables from .env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+interface InfraStackProps extends cdk.StackProps {
+  envName: string;
+}
+
 export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: InfraStackProps) {
     super(scope, id, props);
+
+    const isProd = props.envName === 'prod';
+    const tableName = isProd ? 'HouseholdFinance' : `HouseholdFinance-${props.envName}`;
 
     // 1. DynamoDB Table
     const table = new dynamodb.Table(this, 'HouseholdFinanceTable', {
-      tableName: 'HouseholdFinance',
+      tableName: tableName,
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev only
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY, 
     });
 
     table.addGlobalSecondaryIndex({
@@ -31,7 +38,7 @@ export class InfraStack extends cdk.Stack {
 
     // 2. Cognito User Pool
     const userPool = new cognito.UserPool(this, 'HouseholdExpenseUserPool', {
-      userPoolName: 'HouseholdExpenseUserPool',
+      userPoolName: `HouseholdExpenseUserPool-${props.envName}`,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
@@ -42,7 +49,7 @@ export class InfraStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // 3. Google Identity Provider
@@ -56,7 +63,7 @@ export class InfraStack extends cdk.Stack {
     const googleProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleProvider', {
       userPool,
       clientId: googleClientId,
-      clientSecretValue: cdk.SecretValue.unsafePlainText(googleClientSecret), // fine for dev, use SecretsManager for prod
+      clientSecretValue: cdk.SecretValue.unsafePlainText(googleClientSecret), 
       scopes: ['profile', 'email', 'openid'],
       attributeMapping: {
         email: cognito.ProviderAttribute.GOOGLE_EMAIL,
@@ -69,14 +76,14 @@ export class InfraStack extends cdk.Stack {
     // 4. User Pool Client
     const userPoolClient = new cognito.UserPoolClient(this, 'WebClient', {
       userPool,
-      userPoolClientName: 'WebClient',
+      userPoolClientName: `WebClient-${props.envName}`,
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.GOOGLE,
         cognito.UserPoolClientIdentityProvider.COGNITO,
       ],
       oAuth: {
-        callbackUrls: ['http://localhost:3000/'], // Add prod URL later
-        logoutUrls: ['http://localhost:3000/'],
+        callbackUrls: ['http://localhost:3000/', 'https://household-expense-tracker-web.vercel.app/'], 
+        logoutUrls: ['http://localhost:3000/', 'https://household-expense-tracker-web.vercel.app/'],
         flows: {
           authorizationCodeGrant: true,
         },
@@ -84,12 +91,12 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
-    // Ensure provider is created before the client uses it
     userPoolClient.node.addDependency(googleProvider);
 
     // 5. User Pool Domain
-    // We use a generated string or fixed string for the prefix
-    const domainPrefix = `household-expense-tracker-dev-${this.account}`;
+    const domainPrefix = isProd
+      ? `household-expense-tracker-dev-157943428055`
+      : `household-expense-tracker-local-157943428055`;
     const userPoolDomain = userPool.addDomain('CognitoDomain', {
       cognitoDomain: {
         domainPrefix: domainPrefix,
@@ -98,12 +105,12 @@ export class InfraStack extends cdk.Stack {
 
     // 6. S3 Bucket for Receipts
     const receiptBucket = new s3.Bucket(this, 'ReceiptBucket', {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: !isProd,
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
-          allowedOrigins: ['*'], // In prod, restrict to domain
+          allowedOrigins: ['*'], 
           allowedHeaders: ['*'],
         },
       ],
