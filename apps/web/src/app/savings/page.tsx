@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getTransactionsFromDate, getMonthlySummaries } from "@/actions/transaction";
 import { getHouseholdMembers, updateSavingsData } from "@/actions/household";
-import { subMonths, startOfMonth, addMonths, addDays, isBefore, isSameMonth, isSameDay } from "date-fns";
+import { subMonths, startOfMonth, endOfMonth, addMonths, addDays, isBefore, isSameMonth, isSameDay } from "date-fns";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
@@ -193,12 +193,12 @@ export default function SavingsPage() {
 
 
 
-  // Filter summaries based on selected range
   const filteredSummaries = useMemo(() => {
-    if (selectedRangeValue === 'all') return summaries;
+    const endOfCurrentMonth = endOfMonth(new Date());
+    if (selectedRangeValue === 'all') return summaries.filter((s: any) => new Date(`${s.month}-01T00:00:00Z`) <= endOfCurrentMonth);
     return summaries.filter((s: any) => {
       const summaryDate = new Date(`${s.month}-01T00:00:00Z`);
-      return summaryDate >= range.startDate;
+      return summaryDate >= range.startDate && summaryDate <= endOfCurrentMonth;
     });
   }, [summaries, range.startDate, selectedRangeValue]);
 
@@ -256,8 +256,12 @@ export default function SavingsPage() {
       cursor = addDays(cursor, 1);
     }
 
+    const endOfCurrentMonth = endOfMonth(new Date());
+
     transactions.forEach((tx: any) => {
       const date = new Date(tx.date);
+      if (date > endOfCurrentMonth) return; // Skip future transactions
+
       const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
       if (!dailyDataMap[dayKey]) dailyDataMap[dayKey] = { income: 0, spend: 0 };
