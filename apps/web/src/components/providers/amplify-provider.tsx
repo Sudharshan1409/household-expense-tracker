@@ -12,6 +12,14 @@ if (typeof window !== 'undefined') {
       window.location.href = event.url;
     }
   });
+
+  // Smart Auto-Refresh: Trigger SWR to re-fetch when the app comes back from the background
+  CapacitorApp.addListener('appStateChange', (state) => {
+    if (state.isActive) {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('visibilitychange'));
+    }
+  });
 }
 
 const redirectUrl =
