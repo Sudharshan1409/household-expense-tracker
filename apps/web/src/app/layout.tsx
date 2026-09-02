@@ -25,6 +25,7 @@ export const viewport = {
 };
 
 import { HouseholdProvider } from "@/components/providers/household-provider";
+import { PullToRefreshWrapper } from "@/components/ui/pull-to-refresh";
 
 export default function RootLayout({
   children,
@@ -47,9 +48,11 @@ export default function RootLayout({
                   <div className="flex min-h-screen flex-col md:flex-row">
                     <Sidebar />
                     <main className="flex-1 pb-16 md:pb-0 overflow-y-auto">
-                      <div className="container mx-auto p-4 md:p-8 max-w-6xl">
-                        {children}
-                      </div>
+                      <PullToRefreshWrapper>
+                        <div className="container mx-auto p-4 md:p-8 max-w-6xl">
+                          {children}
+                        </div>
+                      </PullToRefreshWrapper>
                     </main>
                     <BottomNav />
                   </div>
