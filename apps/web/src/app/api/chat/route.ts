@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getMonthlySummaries, getRecentTransactions, getTransactionsFromDate, getTransactionsByTag } from '@/actions/transaction';
 import { getHousehold, getHouseholdMembers } from '@/actions/household';
 import { getTemplates } from '@/actions/recurring';
+import { verifyToken } from '@/lib/auth-server';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -28,11 +29,23 @@ export async function POST(req: Request) {
   }
 
   try {
+    const user = await verifyToken(idToken);
+    const members = await getHouseholdMembers(idToken, householdId);
+    
+    const membersInfo = members.map((m: any) => `- ${m.name || m.email} (ID: ${m.userId})`).join("\n");
+
     const coreMessages = await convertToModelMessages(messages);
     const result = streamText({
       model: google('gemini-2.5-pro'),
       stopWhen: isStepCount(5),
       system: `You are the AI Financial Advisor for this household. Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })} (ISO: ${new Date().toISOString()}).
+The user you are currently chatting with is ${user.name || user.email} (ID: ${user.userId}). 
+The household has the following members:
+${membersInfo}
+
+IMPORTANT: If the user asks about "my" spending, "my" expenses, or "what I spent", you MUST ONLY include transactions, splits, or totals belonging to their specific user ID (${user.userId}). 
+If the user asks about the "household" spending or "total" spending, you can include all members.
+
 The user's timezone is Asia/Kolkata (IST, UTC+5:30).
 IMPORTANT: The database returns dates in UTC. You MUST convert all UTC dates to the user's local timezone (IST) before displaying or filtering them. For example, a UTC date of "2026-08-31T18:30:00.000Z" is actually September 1st in IST!
 Your job is to answer questions about the user's spending, budget, and savings.
