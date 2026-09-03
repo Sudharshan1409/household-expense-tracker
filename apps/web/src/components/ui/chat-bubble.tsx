@@ -177,7 +177,7 @@ export function ChatBubble() {
                                       <YAxis fontSize={10} width={40} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
                                       <Tooltip 
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                        formatter={(value: number) => [`₹${value}`, '']}
+                                        formatter={(value: any) => [`₹${value}`, '']}
                                       />
                                       <Legend wrapperStyle={{ fontSize: '11px' }} />
                                       <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
