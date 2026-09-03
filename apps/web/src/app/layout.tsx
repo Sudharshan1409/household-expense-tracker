@@ -26,6 +26,7 @@ export const viewport = {
 
 import { HouseholdProvider } from "@/components/providers/household-provider";
 import { PullToRefreshWrapper } from "@/components/ui/pull-to-refresh";
+import { ChatBubble } from "@/components/ui/chat-bubble";
 
 export default function RootLayout({
   children,
@@ -56,6 +57,7 @@ export default function RootLayout({
                     </main>
                     <BottomNav />
                   </div>
+                  <ChatBubble />
                 </HouseholdProvider>
               </AuthGuard>
             </ThemeProvider>
