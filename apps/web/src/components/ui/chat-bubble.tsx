@@ -24,11 +24,17 @@ export function ChatBubble() {
   const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
   
   const [token, setToken] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchAuthSession().then(session => {
       setToken(session.tokens?.idToken?.toString() || null);
+      const payload = session.tokens?.idToken?.payload;
+      if (payload) {
+        const name = (payload.given_name as string) || (payload.email as string)?.split('@')[0] || "there";
+        setUserName(name);
+      }
     });
   }, []);
 
@@ -213,8 +219,9 @@ export function ChatBubble() {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/30">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground mt-10 space-y-3">
-                  <Bot className="h-10 w-10 mx-auto opacity-50" />
-                  <p className="text-sm">Hi! I have access to your household data. Ask me anything about your spending, tags, or savings!</p>
+                  <Bot className="h-10 w-10 mx-auto opacity-50 text-primary" />
+                  <p className="text-sm font-medium">Hi {userName}!</p>
+                  <p className="text-sm">I'm your personal financial assistant. Ask me anything about your spending, add a new expense, or check your savings!</p>
                 </div>
               )}
               
