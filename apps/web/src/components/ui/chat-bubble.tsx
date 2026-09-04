@@ -86,7 +86,7 @@ export function ChatBubble() {
     if (lastMessage && lastMessage.role === 'assistant' && lastMessage.parts) {
       for (const part of lastMessage.parts) {
         if (isToolUIPart(part) && getToolName(part) === 'draftNewTransaction' && part.state === 'output-available') {
-          const data = part.output;
+          const data = part.output as any;
           if (data && data.status === 'draft_ready' && !isAddModalOpen) {
             setScannedData({
               amount: data.amount,
@@ -132,7 +132,7 @@ export function ChatBubble() {
   };
 
   return (
-    <div className="fixed bottom-[184px] md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-[144px] md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
           <motion.div
