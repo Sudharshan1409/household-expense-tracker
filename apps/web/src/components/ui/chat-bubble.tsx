@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Bot, User, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, User, Maximize2, Minimize2, Trash2, Sparkles } from 'lucide-react';
 import { useHousehold } from '@/components/providers/household-provider';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
@@ -248,9 +248,14 @@ export function ChatBubble() {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         size="icon"
-        className="h-14 w-14 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300"
+        className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 hover:scale-105 border-0 text-white relative"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {!isOpen && (
+          <span className="absolute -inset-1 animate-pulse rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 opacity-40 blur-sm"></span>
+        )}
+        <div className="relative z-10 flex items-center justify-center">
+          {isOpen ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+        </div>
       </Button>
     </div>
   );
