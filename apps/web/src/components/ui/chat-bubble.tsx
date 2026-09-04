@@ -35,42 +35,70 @@ export function ChatBubble() {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   
-  const handleMicClick = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error("Your browser does not support voice input.");
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  
+  const handleMicClick = async () => {
+    if (isListening && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsListening(false);
       return;
     }
     
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
-    recognition.onstart = () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        setIsProcessingAudio(true);
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          try {
+            const base64data = (reader.result as string).split(',')[1];
+            
+            const res = await fetch("/api/ai/transcribe-audio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                audioBase64: base64data,
+                mimeType: audioBlob.type,
+              }),
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.ok) throw new Error(json.error || "Failed to transcribe audio");
+            
+            if (json.text) {
+              setInput((prev) => prev + (prev ? " " : "") + json.text);
+            }
+          } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Could not transcribe audio");
+          } finally {
+            setIsProcessingAudio(false);
+          }
+        };
+      };
+      
+      mediaRecorder.start();
       setIsListening(true);
-      toast.info("Listening... speak now.");
-    };
-    
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => prev + (prev ? " " : "") + transcript);
-    };
-    
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      
-      // Ignore 'no-speech' as it just means the user didn't say anything
-      if (event.error === 'no-speech') return;
-      
-      toast.error(`Voice recognition failed: ${event.error || 'unknown error'}`);
-    };
-    
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-    
-    recognition.start();
+    } catch (err) {
+      console.error("Mic error:", err);
+      toast.error("Microphone permission denied or not available.");
+    }
   };
   
   const tokenRef = useRef(token);
@@ -317,9 +345,17 @@ export function ChatBubble() {
                 <button
                   type="button"
                   onClick={handleMicClick}
-                  className={`absolute right-3 p-1 rounded-full transition-colors ${isListening ? 'text-red-500 animate-pulse' : 'text-muted-foreground hover:text-foreground'}`}
+                  disabled={isProcessingAudio || isLoading}
+                  className={`absolute right-3 p-1 rounded-full transition-colors ${
+                    isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                  title={isListening ? "Stop listening" : "Start Voice Input"}
                 >
-                  <Mic className="h-4 w-4" />
+                  {isProcessingAudio ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
                 </button>
               </div>
               <Button 
