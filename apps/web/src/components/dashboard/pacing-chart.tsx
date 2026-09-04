@@ -31,7 +31,8 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     now.setMinutes(now.getMinutes() + 30);
     
     const isCurrentMonth = year === now.getUTCFullYear() && month === (now.getUTCMonth() + 1);
-    const currentDay = isCurrentMonth ? now.getUTCDate() : daysInMonth;
+    const actualCurrentDay = isCurrentMonth ? now.getUTCDate() : daysInMonth;
+    const displayDays = isCurrentMonth && actualCurrentDay < 7 ? 7 : actualCurrentDay;
 
     // Filter only expenses and exclude fixed categories
     const expenseTxs = transactions.filter(t => t.transactionType !== "INCOME" && !fixedCategories.includes(t.category));
@@ -50,7 +51,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     
     const data = [];
     
-    for (let day = 1; day <= currentDay; day++) {
+    for (let day = 1; day <= displayDays; day++) {
       // Find expenses for this specific day (current month)
       const daySpend = expenseTxs.filter((t) => {
         const d = new Date(t.date || t.createdAt);
@@ -78,7 +79,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
       
       data.push({
         day,
-        currentSpend: cumulativeSpend,
+        currentSpend: day <= actualCurrentDay ? cumulativeSpend : null,
         idealSpend,
         prevSpend
       });
