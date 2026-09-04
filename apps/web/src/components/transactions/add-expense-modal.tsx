@@ -63,6 +63,7 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [recentTags, setRecentTags] = useState<string[]>([]);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
 
   const loadMembers = async () => {
     try {
@@ -107,7 +108,6 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       setLinkedDebtId(initialData?.linkedDebtId || "");
       setReceiptFile(initialData?.file || null);
       setAiSuggestedTags(initialData?.tags || []);
-      setMagicText("");
       
       if (initialData?.transactionType) setTransactionType(initialData.transactionType);
       if (initialData?.isShared !== undefined) setIsShared(initialData.isShared);

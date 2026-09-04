@@ -17,7 +17,7 @@ import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions, deleteTransaction, updateTransactionTags } from "@/actions/transaction";
 import { getHouseholdMembers, addHouseholdTag } from "@/actions/household";
 import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
-import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
+
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -262,13 +262,7 @@ export default function TransactionsPage() {
         </div>
         <div className="flex items-center gap-3">
           <HouseholdSwitcher />
-          <ScanReceiptButton
-            onScanSuccess={(data) => {
-              setScannedData(data);
-              setIsAddModalOpen(true);
-            }}
-            className="hidden sm:flex"
-          />
+
           <Button
             className="hidden sm:flex"
             onClick={() => {

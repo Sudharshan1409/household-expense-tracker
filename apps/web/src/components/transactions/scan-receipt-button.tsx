@@ -10,9 +10,10 @@ import { ScannedReceiptData } from "./add-expense-modal";
 interface ScanReceiptButtonProps {
   onScanSuccess: (data: ScannedReceiptData) => void;
   className?: string;
+  iconOnly?: boolean;
 }
 
-export function ScanReceiptButton({ onScanSuccess, className = "" }: ScanReceiptButtonProps) {
+export function ScanReceiptButton({ onScanSuccess, className = "", iconOnly = false }: ScanReceiptButtonProps) {
   const { activeHousehold } = useHousehold();
   const [showPicker, setShowPicker] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -121,16 +122,27 @@ export function ScanReceiptButton({ onScanSuccess, className = "" }: ScanReceipt
 
   return (
     <>
-      <Button
-        onClick={() => setShowPicker(true)}
-        variant="outline"
-        className={`relative group border-purple-500/40 hover:border-purple-500 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-indigo-500/5 hover:from-purple-500/10 hover:via-pink-500/10 hover:to-indigo-500/10 transition-all text-purple-700 dark:text-purple-300 gap-2 font-medium shadow-sm ${className}`}
-      >
-        <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" />
-        <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 dark:from-purple-400 dark:via-pink-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
-          AI Scan Bill
-        </span>
-      </Button>
+      {iconOnly ? (
+        <button
+          onClick={(e) => { e.preventDefault(); setShowPicker(true); }}
+          className={`text-muted-foreground hover:text-purple-500 transition-colors ${className}`}
+          type="button"
+          title="AI Scan Receipt"
+        >
+          <Camera className="h-5 w-5" />
+        </button>
+      ) : (
+        <Button
+          onClick={() => setShowPicker(true)}
+          variant="outline"
+          className={`relative group border-purple-500/40 hover:border-purple-500 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-indigo-500/5 hover:from-purple-500/10 hover:via-pink-500/10 hover:to-indigo-500/10 transition-all text-purple-700 dark:text-purple-300 gap-2 font-medium shadow-sm ${className}`}
+        >
+          <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" />
+          <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 dark:from-purple-400 dark:via-pink-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
+            AI Scan Bill
+          </span>
+        </Button>
+      )}
 
       {/* Hidden Inputs for Camera vs Gallery */}
       <input

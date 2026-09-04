@@ -8,7 +8,7 @@ import { Plus, IndianRupee, Home, Clock, Target } from "lucide-react";
 import { useAuthSWR } from "@/hooks/use-auth-swr";
 import { getRecentTransactions } from "@/actions/transaction";
 import { AddExpenseModal, ScannedReceiptData } from "@/components/transactions/add-expense-modal";
-import { ScanReceiptButton } from "@/components/transactions/scan-receipt-button";
+
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import { useHousehold } from "@/components/providers/household-provider";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
@@ -167,13 +167,7 @@ export default function Dashboard() {
             <HouseholdSwitcher />
           </div>
           
-          <ScanReceiptButton
-            onScanSuccess={(data) => {
-              setScannedData(data);
-              setIsModalOpen(true);
-            }}
-            className="hidden sm:flex ml-2"
-          />
+
           <Button
             onClick={() => {
               setScannedData(null);
@@ -447,13 +441,7 @@ export default function Dashboard() {
           
           {/* Mobile FABs for Scan and Add Expense */}
           <div className="md:hidden fixed bottom-20 right-4 z-40 flex flex-col gap-3 items-end">
-            <ScanReceiptButton
-              onScanSuccess={(data) => {
-                setScannedData(data);
-                setIsModalOpen(true);
-              }}
-              className="rounded-full shadow-xl border border-purple-500/40 px-4 py-2.5 bg-background/95 backdrop-blur-md text-xs font-bold"
-            />
+
             <button
               onClick={() => {
                 setScannedData(null);
