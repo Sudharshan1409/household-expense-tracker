@@ -63,13 +63,6 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [recentTags, setRecentTags] = useState<string[]>([]);
-  const [magicText, setMagicText] = useState("");
-  const [isMagicLoading, setIsMagicLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
-  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   const loadMembers = async () => {
     try {
@@ -134,128 +127,6 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
       [userId]: parseFloat(val) || 0
     }));
   };
-
-  const handleMagicEntry = async () => {
-    if (!magicText.trim() || isMagicLoading) return;
-    
-    setIsMagicLoading(true);
-    try {
-      const res = await fetch("/api/ai/parse-text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: magicText,
-          categories: activeHousehold?.metadata?.categories || [],
-          tags: activeHousehold?.metadata?.tags || [],
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Failed to parse text");
-
-      const data = json.data;
-      if (data.amount !== undefined && data.amount !== 0) setAmount(String(data.amount));
-      if (data.description) setDescription(data.description);
-      if (data.category) setCategory(data.category);
-      if (data.tags && Array.isArray(data.tags)) {
-        setAiSuggestedTags(data.tags);
-      }
-      
-      // If AI found a date, use it. Otherwise, reset to current date & time
-      if (data.date && data.date.includes("T")) {
-        setDatetime(data.date);
-      } else {
-        const d = new Date();
-        setDatetime(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-      }
-
-      toast.success("✨ Magic Entry Applied!");
-      // We don't clear the text so the user can see what they entered
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Could not parse text");
-    } finally {
-      setIsMagicLoading(false);
-    }
-  };
-
-  const toggleVoiceInput = async () => {
-    if (isListening && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsListening(false);
-      return;
-    }
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(track => track.stop());
-        setIsProcessingAudio(true);
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = async () => {
-          try {
-            const base64data = (reader.result as string).split(',')[1];
-            
-            const res = await fetch("/api/ai/parse-audio", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                audioBase64: base64data,
-                mimeType: audioBlob.type,
-                categories: activeHousehold?.metadata?.categories || [],
-                tags: activeHousehold?.metadata?.tags || [],
-              }),
-            });
-
-            const json = await res.json();
-            if (!res.ok || !json.ok) throw new Error(json.error || "Failed to process audio");
-
-            const data = json.data;
-            if (data.transcript) setMagicText(data.transcript);
-            if (data.amount !== undefined && data.amount !== 0) setAmount(String(data.amount));
-            if (data.description) setDescription(data.description);
-            if (data.category) setCategory(data.category);
-            if (data.tags && Array.isArray(data.tags)) setAiSuggestedTags(data.tags);
-            
-            if (data.date && data.date.includes("T")) {
-              setDatetime(data.date);
-            } else {
-              const d = new Date();
-              setDatetime(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-            }
-
-            toast.success("✨ Voice Entry Applied!");
-          } catch (err: any) {
-            console.error(err);
-            toast.error(err.message || "Could not parse audio");
-          } finally {
-            setIsProcessingAudio(false);
-          }
-        };
-      };
-      
-      mediaRecorder.start();
-      setIsListening(true);
-      setMagicText(""); // Clear text to indicate it's listening
-    } catch (err) {
-      console.error("Mic error:", err);
-      toast.error("Microphone permission denied or not available.");
-    }
-  };
-
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -384,54 +255,6 @@ export function AddExpenseModal({ isOpen, onClose, householdId, onSuccess, curre
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 pb-2">
           <div className="space-y-4">
-            {/* Magic Text Input */}
-            <div className="space-y-1.5 p-3 rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-500/5 to-pink-500/5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                Magic Entry
-              </label>
-              <div className="relative flex items-center gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="Type or speak: 'Spent 400 on swiggy today'"
-                    value={magicText}
-                    onChange={(e) => setMagicText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleMagicEntry();
-                      }
-                    }}
-                    disabled={isMagicLoading || isLoading}
-                    className="flex h-11 w-full rounded-lg border border-purple-500/30 bg-background/50 pl-3 pr-10 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={toggleVoiceInput}
-                    disabled={isMagicLoading || isLoading || isProcessingAudio}
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors ${
-                      isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                    title={isListening ? "Stop listening" : "Start Voice Input"}
-                  >
-                    {isProcessingAudio ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <Button 
-                  type="button" 
-                  onClick={handleMagicEntry}
-                  disabled={!magicText.trim() || isMagicLoading || isListening || isProcessingAudio}
-                  className="h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shrink-0 shadow-sm"
-                >
-                  {isMagicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fill"}
-                </Button>
-              </div>
-            </div>
 
             {initialData && (
               <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 border border-purple-500/30 text-purple-800 dark:text-purple-200 p-3 rounded-xl text-sm flex items-center gap-2 shadow-sm animate-in fade-in-50">

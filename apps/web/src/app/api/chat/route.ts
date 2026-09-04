@@ -75,6 +75,23 @@ UI WIDGETS (IMPORTANT):
 If the user asks for a "chart", "graph", or "visual trend" of their spending/income, DO NOT attempt to write JSON, ASCII art, or markdown for a chart. Simply execute the \`getMonthlySummaries\` tool! The frontend UI will automatically intercept this tool call and render a beautiful, interactive Bar Chart widget for the user. Just provide a brief textual summary of the data and let the UI handle the visualization.`,
       messages: coreMessages,
       tools: {
+        draftNewTransaction: tool({
+          description: 'Draft a new transaction based on the user\'s input (e.g. "spent 500 on swiggy" or "got 1000 cashback"). Use this tool whenever the user indicates they want to log or record a transaction.',
+          inputSchema: z.object({
+            amount: z.number().describe('The numeric amount'),
+            description: z.string().describe('Short description of the expense or merchant, in Title Case'),
+            category: z.string().describe('The category. Pick from the household fixed categories or standard variable ones like Food, Groceries, Shopping, etc.'),
+            date: z.string().describe('ISO string date of the transaction'),
+            transactionType: z.enum(['EXPENSE', 'INCOME']).describe('Whether this is an expense or income'),
+          }),
+          execute: async (draftData) => {
+            // We just return the draft data to the client UI to handle opening the modal.
+            return {
+              status: "draft_ready",
+              ...draftData
+            };
+          }
+        }),
         getMonthlySummaries: tool({
           description: 'Get the high-level monthly spending and income summaries for the household. Gives totals per user per month.',
           inputSchema: z.object({}),

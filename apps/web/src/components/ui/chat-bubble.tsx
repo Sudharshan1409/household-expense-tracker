@@ -3,7 +3,8 @@
 import { useChat } from '@ai-sdk/react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Bot, User, Maximize2, Minimize2, Trash2, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, User, Maximize2, Minimize2, Trash2, Sparkles, Mic } from 'lucide-react';
+import { toast } from 'sonner';
 import { useHousehold } from '@/components/providers/household-provider';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
@@ -12,12 +13,17 @@ import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { ScanReceiptButton } from '@/components/transactions/scan-receipt-button';
+import { AddExpenseModal, ScannedReceiptData } from '@/components/transactions/add-expense-modal';
 
 export function ChatBubble() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const { activeHousehold } = useHousehold();
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [scannedData, setScannedData] = useState<ScannedReceiptData | null>(null);
+  
+  const [token, setToken] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,6 +33,42 @@ export function ChatBubble() {
   }, []);
 
   const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  
+  const handleMicClick = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error("Your browser does not support voice input.");
+      return;
+    }
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.info("Listening... speak now.");
+    };
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => prev + (prev ? " " : "") + transcript);
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error(event.error);
+      setIsListening(false);
+      toast.error("Voice recognition failed.");
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    
+    recognition.start();
+  };
   
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -37,6 +79,31 @@ export function ChatBubble() {
       headers: () => (tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}) as Record<string, string>,
     })
   });
+
+  // Intercept draftNewTransaction tool call to open the modal
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === 'assistant' && lastMessage.parts) {
+      for (const part of lastMessage.parts) {
+        if (isToolUIPart(part) && getToolName(part) === 'draftNewTransaction' && part.state === 'output-available') {
+          const data = part.output;
+          if (data && data.status === 'draft_ready' && !isAddModalOpen) {
+            setScannedData({
+              amount: data.amount,
+              description: data.description,
+              category: data.category,
+              date: data.date,
+              transactionType: data.transactionType,
+            });
+            setIsAddModalOpen(true);
+            
+            // Optional: immediately remove this specific tool call or message if we don't want it sitting in chat?
+            // Actually it's fine to leave it, we can just hide it in the UI.
+          }
+        }
+      }
+    }
+  }, [messages, isAddModalOpen]);
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
@@ -189,6 +256,10 @@ export function ChatBubble() {
                             );
                           }
 
+                          if (toolName === 'draftNewTransaction') {
+                            return null;
+                          }
+
                           return (
                             <div key={index} className="mt-2 text-xs opacity-70 italic border-t border-current/20 pt-1">
                               {part.state === 'output-available' ? `✓ Queried ${toolName || 'tool'}` : `⟳ Fetching ${toolName || 'tool'}...`}
@@ -225,13 +296,29 @@ export function ChatBubble() {
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleFormSubmit} className="p-3 border-t bg-background flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your finances..."
-                className="flex-1 rounded-full bg-muted/50 focus-visible:ring-primary/50"
+            <form onSubmit={handleFormSubmit} className="p-3 border-t bg-background flex gap-2 items-center">
+              <ScanReceiptButton 
+                iconOnly 
+                onScanSuccess={(data) => {
+                  setScannedData(data);
+                  setIsAddModalOpen(true);
+                }} 
               />
+              <div className="relative flex-1 flex items-center">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask or say 'spent 500 on food'..."
+                  className="flex-1 rounded-full bg-muted/50 focus-visible:ring-primary/50 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  className={`absolute right-3 p-1 rounded-full transition-colors ${isListening ? 'text-red-500 animate-pulse' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+              </div>
               <Button 
                 type="submit" 
                 size="icon" 
@@ -257,6 +344,24 @@ export function ChatBubble() {
           {isOpen ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
         </div>
       </Button>
+
+      {/* Embedded Add Expense Modal for Scanner Output */}
+      {activeHousehold && (
+        <AddExpenseModal
+          isOpen={isAddModalOpen}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setScannedData(null);
+          }}
+          householdId={activeHousehold.householdId}
+          onSuccess={() => {
+            setIsAddModalOpen(false);
+            setScannedData(null);
+            // We could optionally trigger a reload of chat data if needed
+          }}
+          initialData={scannedData}
+        />
+      )}
     </div>
   );
 }
