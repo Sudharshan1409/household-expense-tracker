@@ -49,7 +49,12 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
     let cumulativeSpend = 0;
     let prevCumulativeSpend = 0;
     
-    const data = [];
+    const data: { day: number; currentSpend: number | null; idealSpend: number | null; prevSpend: number | null }[] = [{
+      day: 0,
+      currentSpend: 0,
+      idealSpend: activeBudget ? 0 : null,
+      prevSpend: hasPrevData ? 0 : null
+    }];
     
     for (let day = 1; day <= displayDays; day++) {
       // Find expenses for this specific day (current month)
@@ -154,7 +159,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
                 tickLine={false} 
                 axisLine={false}
                 tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                tickFormatter={(val) => `${val}`}
+                tickFormatter={(val) => val === 0 ? "" : `${val}`}
               />
               <YAxis 
                 domain={['dataMin', 'dataMax']}
@@ -175,7 +180,7 @@ export function PacingChart({ transactions, prevTransactions, budget, overallBud
                   `₹${value.toFixed(2)}`, 
                   name === "currentSpend" ? "Current Spend" : name === "idealSpend" ? "Ideal Pace" : "Last Month"
                 ]}
-                labelFormatter={(label) => `Day ${label}`}
+                labelFormatter={(label) => label === 0 ? "Start" : `Day ${label}`}
               />
               {hasIdeal && (
                 <Line 
