@@ -112,13 +112,18 @@ export function ChatBubble() {
   });
 
   // Intercept draftNewTransaction tool call to open the modal
+  const processedMessageIdsRef = useRef(new Set<string>());
+
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (lastMessage && lastMessage.role === 'assistant' && lastMessage.parts) {
+      if (processedMessageIdsRef.current.has(lastMessage.id)) return;
+      
+      let processed = false;
       for (const part of lastMessage.parts) {
         if (isToolUIPart(part) && getToolName(part) === 'draftNewTransaction' && part.state === 'output-available') {
           const data = part.output as any;
-          if (data && data.status === 'draft_ready' && !isAddModalOpen) {
+          if (data && data.status === 'draft_ready') {
             setScannedData({
               amount: data.amount,
               description: data.description,
@@ -127,14 +132,16 @@ export function ChatBubble() {
               transactionType: data.transactionType,
             });
             setIsAddModalOpen(true);
-            
-            // Optional: immediately remove this specific tool call or message if we don't want it sitting in chat?
-            // Actually it's fine to leave it, we can just hide it in the UI.
+            processed = true;
           }
         }
       }
+      
+      if (processed) {
+        processedMessageIdsRef.current.add(lastMessage.id);
+      }
     }
-  }, [messages, isAddModalOpen]);
+  }, [messages]);
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
