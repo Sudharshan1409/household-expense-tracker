@@ -58,9 +58,12 @@ export function ChatBubble() {
     };
     
     recognition.onerror = (event: any) => {
-      console.error(event.error);
       setIsListening(false);
-      toast.error("Voice recognition failed.");
+      
+      // Ignore 'no-speech' as it just means the user didn't say anything
+      if (event.error === 'no-speech') return;
+      
+      toast.error(`Voice recognition failed: ${event.error || 'unknown error'}`);
     };
     
     recognition.onend = () => {
