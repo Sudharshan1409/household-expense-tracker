@@ -57,11 +57,14 @@ export function UserMenu() {
       pollInterval = setInterval(() => {
         pollCount++;
         checkUser();
-        // Give up after 10 seconds (10 polls)
-        if (pollCount > 10) {
+        // Give up after 5 seconds (5 polls)
+        if (pollCount > 5) {
           clearInterval(pollInterval);
           setIsLoading(false);
-          console.error("Gave up waiting for OAuth code exchange.");
+          // Strip the stale code from the URL so it doesn't get stuck on refresh
+          if (typeof window !== "undefined") {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         }
       }, 1000);
     }
