@@ -31,8 +31,11 @@ export async function POST(req: Request) {
   try {
     const user = await verifyToken(idToken);
     const members = await getHouseholdMembers(idToken, householdId);
+    const household = await getHousehold(idToken, householdId);
     
-    const membersInfo = members.map((m: any) => `- ${m.name || m.email} (ID: ${m.userId})`).join("\n");
+    const membersInfo = members.map((m: any) => `- ${m.name || m.email} (ID: ${m.userId}, Monthly Budget: ₹${m.budget || 0})`).join("\n");
+    const fixedCategories = household?.fixedCategories || [];
+    const fixedCategoriesStr = fixedCategories.length > 0 ? fixedCategories.join(", ") : "None";
 
     const coreMessages = await convertToModelMessages(messages);
     const result = streamText({
@@ -43,8 +46,14 @@ The user you are currently chatting with is ${user.name || user.email} (ID: ${us
 The household has the following members:
 ${membersInfo}
 
-IMPORTANT: If the user asks about "my" spending, "my" expenses, or "what I spent", you MUST ONLY include transactions, splits, or totals belonging to their specific user ID (${user.userId}). 
-If the user asks about the "household" spending or "total" spending, you can include all members.
+APP DOMAIN KNOWLEDGE (CRUCIAL):
+1. TRANSACTIONS: The app only supports "EXPENSE" and "INCOME" transactions.
+2. FIXED VS VARIABLE: Expenses belonging to the following categories are "Fixed Expenses": [${fixedCategoriesStr}]. EVERYTHING else is considered a "Variable Expense". Fixed expenses are excluded from daily pacing limits and budgets. Variable expenses are what count towards the budget.
+3. SPLITS & LIABILITY: Transactions can be split among members (isShared = true). If a transaction is shared, the 'splits' object determines each member's liability. If NOT shared, the user who paid it (paidBy) is 100% liable. 
+4. DEBTS: The app tracks debts (internal IOUs or external). An expense might have a 'linkedDebtId' if it was a payment towards a debt.
+
+IMPORTANT: If the user asks about "my" spending, "my" expenses, or "what I spent", you MUST ONLY calculate based on their specific liability (from the splits object if shared, or if they paid for a non-shared expense) for their user ID (${user.userId}).
+If the user asks about the "household" spending or "total" spending, include all members.
 
 The user's timezone is Asia/Kolkata (IST, UTC+5:30).
 IMPORTANT: The database returns dates in UTC. You MUST convert all UTC dates to the user's local timezone (IST) before displaying or filtering them. For example, a UTC date of "2026-08-31T18:30:00.000Z" is actually September 1st in IST!
