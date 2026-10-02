@@ -49,7 +49,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
 
       const memberships: any = await getUserHouseholds(token);
       
-      if (memberships?.error === "Unauthorized") {
+      if (memberships?.error === "Unauthorized" || !Array.isArray(memberships)) {
         setHouseholds([]);
         return;
       }
