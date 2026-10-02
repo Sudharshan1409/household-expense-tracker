@@ -51,6 +51,9 @@ export default function RootLayout({
                     <main className="flex-1 pb-16 md:pb-0 overflow-y-auto">
                       <PullToRefreshWrapper>
                         <div className="container mx-auto p-4 md:p-8 max-w-6xl">
+                          <script dangerouslySetInnerHTML={{
+                            __html: `window.addEventListener('beforeunload', () => console.log('FULL_PAGE_RELOAD'))`
+                          }} />
                           {children}
                         </div>
                       </PullToRefreshWrapper>
