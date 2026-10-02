@@ -349,7 +349,7 @@ export function ManageHouseholdModal({ isOpen, onClose, household, onSuccess }: 
                         <div className="flex items-center gap-2">
                           <Select
                             value={m.role}
-                            onValueChange={(newRole) => {
+                            onValueChange={(newRole: any) => {
                               setPendingRoleChange({ userId: m.userId, newRole: newRole as "ADMIN" | "MEMBER", userName: m.userName || m.userId });
                             }}
                           >
